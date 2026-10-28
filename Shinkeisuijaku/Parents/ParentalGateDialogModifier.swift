@@ -15,7 +15,7 @@ extension View {
     }
 }
 
-/// 保護者の確認のダイアログを重ねる。出すたびに新しい問題にする（前に出した問題を続けて出さない）。
+/// 保護者の確認のダイアログを重ねる。出すたびに、画面の流れの乱数から問題を作り直す（UI テストでは種を固定しているので、毎回同じ問題から始まる）。
 /// 出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする
 private struct ParentalGateDialogModifier: ViewModifier {
     let flow: AppFlow
@@ -24,7 +24,11 @@ private struct ParentalGateDialogModifier: ViewModifier {
         content
             .overlay {
                 if flow.isShowingParentalGate {
-                    ParentalGateView(onPassed: flow.parentalGatePassed, onCancel: flow.cancelParentalGate)
+                    ParentalGateView(
+                        generator: flow.parentalGateGenerator,
+                        onPassed: flow.parentalGatePassed,
+                        onCancel: flow.cancelParentalGate
+                    )
                         .transition(.opacity)
                 }
             }

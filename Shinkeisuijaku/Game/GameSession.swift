@@ -50,6 +50,14 @@ struct GameTiming: Sendable {
         hintDuration: Motion.hintDuration,
         clearDialogDelay: Motion.clearDialogDelay
     )
+
+    /// UI テストの秒数（待たない。`InstantGameClock` と組み合わせ、UI テストが固定時間で待たずに次の操作へ進めるようにする）
+    static let uiTesting = GameTiming(
+        revealAll: { _, _ in 0 },
+        mismatchDelay: 0,
+        hintDuration: 0,
+        clearDialogDelay: 0
+    )
 }
 
 /// 1 回のゲーム。待つ処理（全部見せる・ハズレを戻す・ヒント・クリアまでの間）はセッションが自分の Task で進め、

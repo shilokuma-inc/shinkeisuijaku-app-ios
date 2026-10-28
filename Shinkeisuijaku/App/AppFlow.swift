@@ -52,7 +52,8 @@ final class AppFlow {
     private(set) var isShowingParentalGate = false
     /// おうちの方への流れ（保護者の確認 → おうちの方への画面）をどこから始めたか（流れの外では nil）
     private(set) var parentsEntry: ParentsEntry?
-    /// クリアのダイアログで押した、鍵の付いた次の難易度（案内を出している。押していなければ nil。ゲームを始めるたびに消す）
+    /// クリアのダイアログで押した、鍵の付いた次の難易度（案内を出している。押していなければ nil。
+    /// ゲームを始める・ホームに戻る・スタンプちょうを開くたびに消す（クリアのダイアログを離れたら、案内は要らない）
     private(set) var clearLockedDifficulty: Difficulty?
 
     @ObservationIgnored let store: any AppDataStore
@@ -61,18 +62,23 @@ final class AppFlow {
     @ObservationIgnored private let timing: GameTiming
     @ObservationIgnored private let clock: any GameClock
     @ObservationIgnored private var generator: any RandomNumberGenerator
+    /// 保護者の確認の問題を選ぶ乱数（確認を出すたびに、ダイアログがこの値から始める。UI テストでは種を固定したもの）
+    @ObservationIgnored let parentalGateGenerator: any RandomNumberGenerator
     /// 遊んでいるゲームのクリアの記録。ゲームごとに作り直し、1 回のゲームで 1 回だけ記録する
     @ObservationIgnored private var recorder: ClearRecorder?
 
     /// 保存の中身を見て、初回クリア前ならゲームを始めた状態で用意する
-    /// - Parameter generator: カードを配る乱数。テストでは種を固定したものを渡す
+    /// - Parameters:
+    ///   - generator: カードを配る・スタンプを選ぶ乱数。テストと UI テストでは種を固定したものを渡す
+    ///   - parentalGateGenerator: 保護者の確認の問題を選ぶ乱数。UI テストでは種を固定したものを渡す
     init(
         store: any AppDataStore,
         passStore: PassStore,
         haptics: any Haptics,
         timing: GameTiming = .standard,
         clock: any GameClock = SystemGameClock(),
-        generator: any RandomNumberGenerator = SystemRandomNumberGenerator()
+        generator: any RandomNumberGenerator = SystemRandomNumberGenerator(),
+        parentalGateGenerator: any RandomNumberGenerator = SystemRandomNumberGenerator()
     ) {
         self.store = store
         self.passStore = passStore
@@ -80,6 +86,7 @@ final class AppFlow {
         self.timing = timing
         self.clock = clock
         self.generator = generator
+        self.parentalGateGenerator = parentalGateGenerator
         let data = store.load()
         lastChoice = GameChoice(course: data.lastCourse, difficulty: data.lastDifficulty)
         if let choice = LaunchRules.launchGame(data) {
@@ -145,6 +152,7 @@ final class AppFlow {
     func goHome() {
         path = []
         parentsEntry = nil
+        clearLockedDifficulty = nil
     }
 
     /// 「ほかの あそびかた」のコースを押したとき。そのコースのコース選択のダイアログを出す
@@ -178,6 +186,7 @@ final class AppFlow {
     /// スタンプちょうを開く（ホームのボタン・クリアの「スタンプちょう」）。クリアから開いたときもプレイを残さないので、戻るとホームへ
     func openStampBook() {
         path = [.stampBook]
+        clearLockedDifficulty = nil
     }
 
     /// スタンプちょうの並べ方（保存の持っているスタンプとパスの権利から。開くたびに保存を読み直す）
