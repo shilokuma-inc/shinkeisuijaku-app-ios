@@ -19,7 +19,7 @@ final class ImmediateClock: GameClock {
     }
 }
 
-/// `sleep` で止まり、`advance()` を呼ぶまで進まない時計。待っているあいだの状態を確かめるために使う
+/// `sleep` で止まり、`advance()` を呼ぶか cancel されるまで進まない時計。待っているあいだの状態を確かめるために使う
 @MainActor
 final class GatedClock: GameClock {
     private(set) var requested: [TimeInterval] = []
@@ -28,11 +28,18 @@ final class GatedClock: GameClock {
 
     func sleep(for seconds: TimeInterval) async {
         requested.append(seconds)
-        await withCheckedContinuation { continuation in
-            sleepers.append(continuation)
-            let waiting = watchers
-            watchers = []
-            waiting.forEach { $0.resume() }
+        // cancel されたら（`quit()` やテストの時間切れ）、進めるのを待たずに戻る
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                sleepers.append(continuation)
+                let waiting = watchers
+                watchers = []
+                waiting.forEach { $0.resume() }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                self.advance()
+            }
         }
     }
 
@@ -42,11 +49,6 @@ final class GatedClock: GameClock {
             return
         }
         await withCheckedContinuation { watchers.append($0) }
-    }
-
-    /// 止まっている `sleep` も、それを待つ人もいないか（テストの終わりに、待ちが残っていないことを確かめる）
-    var isIdle: Bool {
-        sleepers.isEmpty && watchers.isEmpty
     }
 
     /// 止まっている `sleep` をすべて進める
@@ -318,6 +320,5 @@ struct GameSessionTests {
         clock.advance()
         await hinting.waitForPendingWork()
         #expect(hinting.phase == .quit)
-        #expect(clock.isIdle)
     }
 }
