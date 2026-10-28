@@ -32,6 +32,8 @@ struct Shinkeisuijaku: App {
             StampCatalogView()
         case .play:
             PlayScreenshotDemoView()
+        case .clear:
+            ClearScreenshotDemoView()
         }
     }
 }

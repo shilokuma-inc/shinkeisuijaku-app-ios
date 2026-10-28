@@ -57,6 +57,8 @@ enum Metrics {
     static let hintIconHeight: CGFloat = 22
     /// 押しているあいだのボタンの透明度（引き継ぎブックに無いので、押したと分かる程度にした）
     static let pressedOpacity: Double = 0.7
+    /// ボタンの中の鍵のマークの大きさ（難易度ボタン・次の難易度）
+    static let lockIconSize: CGFloat = 16
     /// タップできる大きさの下限（すべてのボタン）
     static let minTapTarget: CGFloat = 44
 
