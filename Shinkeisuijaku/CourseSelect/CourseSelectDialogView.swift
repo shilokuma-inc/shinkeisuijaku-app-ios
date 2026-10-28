@@ -79,7 +79,8 @@ private struct CourseDifficultyButton: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if option.isLocked {
                     LockShape()
-                        .fill(Palette.muted)
+                        // 鍵のマークはボタンの文字と同じ色（引き継ぎブックの 6 ページの見本の「8ペア」と同じ濃さ。コース選択とクリアでそろえる）
+                        .fill(Palette.text)
                         .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
                         .accessibilityLabel("かぎ")
                 } else if reservesLockSpace {
