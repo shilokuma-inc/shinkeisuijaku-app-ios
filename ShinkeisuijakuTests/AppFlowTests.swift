@@ -165,4 +165,70 @@ struct AppFlowTests {
         flow.handle(.home)
         #expect(flow.path.isEmpty)
     }
+
+    /// 「ほかの あそびかた」のコースを押すと、そのコースのコース選択のダイアログが出る（ゲームはまだ始めない）
+    @Test(arguments: Course.allCases)
+    func chooseCourseShowsDialog(course: Course) {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        #expect(flow.courseSelection == nil)
+        flow.chooseCourse(course)
+        #expect(flow.courseSelection == CourseSelection(course: course))
+        #expect(flow.path.isEmpty)
+        #expect(flow.session == nil)
+    }
+
+    /// 鍵の無い難易度を押すと、ダイアログを閉じて そのコースと難易度のゲームを始める
+    @Test
+    func unlockedDifficultyStartsGameAndClosesDialog() throws {
+        let (flow, store) = makeFlow(data: AppData(hasClearedOnce: true))
+        flow.chooseCourse(.hiragana)
+        let result = flow.selectDifficulty(.easy)
+        #expect(result == .start(GameChoice(course: .hiragana, difficulty: .easy)))
+        #expect(flow.courseSelection == nil)
+        #expect(flow.path == [.game])
+        let session = try #require(flow.session)
+        #expect(session.course == .hiragana)
+        #expect(session.difficulty == .easy)
+        #expect(store.data.lastCourse == .hiragana)
+    }
+
+    /// 鍵の付いた難易度を押しても、ゲームは始まらず、ダイアログを出したまま案内を出す
+    @Test
+    func lockedDifficultyShowsGuideWithoutStarting() {
+        let (flow, store) = makeFlow(data: AppData(hasClearedOnce: true))
+        flow.chooseCourse(.animals)
+        let result = flow.selectDifficulty(.hard)
+        #expect(result == .showLockedGuide)
+        #expect(flow.path.isEmpty)
+        #expect(flow.session == nil)
+        let selection = flow.courseSelection
+        #expect(selection?.course == .animals)
+        #expect(selection?.lockedDifficulty == .hard)
+        #expect(selection?.showsLockedGuide(hasPass: flow.hasPass) == true)
+        #expect(store.data.lastDifficulty == .easy, "始めていないので前回の難易度は変えない")
+    }
+
+    /// パスの権利があれば、ふつう・むずかしいも押すとゲームを始める
+    @Test
+    func passStartsLockedDifficulty() throws {
+        let data = AppData(hasPassCache: true, hasClearedOnce: true)
+        let flow = makeFlow(data: data, entitled: true).flow
+        flow.chooseCourse(.hiragana)
+        #expect(flow.selectDifficulty(.normal) == .start(GameChoice(course: .hiragana, difficulty: .normal)))
+        #expect(flow.courseSelection == nil)
+        let session = try #require(flow.session)
+        #expect(session.difficulty == .normal)
+    }
+
+    /// 「とじる」でダイアログを閉じる（ゲームは始めない）。ダイアログを出していなければ難易度を押しても何もしない
+    @Test
+    func closeCourseSelectionHidesDialog() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        flow.chooseCourse(.animals)
+        flow.closeCourseSelection()
+        #expect(flow.courseSelection == nil)
+        #expect(flow.selectDifficulty(.easy) == nil)
+        #expect(flow.session == nil)
+        #expect(flow.path.isEmpty)
+    }
 }
