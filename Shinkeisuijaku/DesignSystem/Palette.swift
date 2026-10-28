@@ -102,11 +102,11 @@ enum Palette {
     static let artOutline = Color(hex: 0x2B3140)
 
     // スタンプ
-    /// 銀のふち。ふつうをクリアしたスタンプ
+    /// 銀のふち。パス専用・ふつうをクリアしたスタンプ
     static let stampSilver = Color(hex: 0xAAB4BB)
     /// 銀の地
     static let stampSilverWash = Color(hex: 0xF1F4F6)
-    /// 金のふち。むずかしいをクリアしたスタンプ
+    /// 金のふち。パス専用・むずかしいをクリアしたスタンプ
     static let stampGold = Color(hex: 0xE0A800)
     /// 金の地
     static let stampGoldWash = Color(hex: 0xFFF4CC)
