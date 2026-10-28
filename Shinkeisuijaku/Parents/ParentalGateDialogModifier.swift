@@ -2,14 +2,14 @@
 //  ParentalGateDialogModifier.swift
 //  Shinkeisuijaku
 //
-//  ホームの「おうちの方へ」を押したときに、ホームの上に重ねる保護者の確認のダイアログ。
-//  通ったらおうちの方への画面を積み、やめたらホームのまま（何も積まない）。出すかどうかと行き先は `AppFlow` が決める。
+//  「おうちの方へ」（ホームの上の右・鍵の案内の下・クリアの「もっと むずかしいのは」）を押したときに、画面の上に重ねる保護者の確認のダイアログ。
+//  通ったらおうちの方への画面にし、やめたらホームに戻る。出すかどうかと行き先は `AppFlow` が決める。
 //
 
 import SwiftUI
 
 extension View {
-    /// 画面の流れが出している保護者の確認のダイアログを、この画面（ホーム）の上に重ねる
+    /// 画面の流れが出している保護者の確認のダイアログを、この画面（`RootView` の `NavigationStack` 全体）の上に重ねる
     func parentalGateDialog(flow: AppFlow) -> some View {
         modifier(ParentalGateDialogModifier(flow: flow))
     }

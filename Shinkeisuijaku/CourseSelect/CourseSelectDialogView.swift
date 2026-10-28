@@ -4,8 +4,9 @@
 //
 //  コース選択のダイアログ（仕様書の「画面と遷移」・引き継ぎブックの 6 ページの「難易度ボタン（鍵つき）」と 7 ページの「ダイアログ」）。
 //  見出しはコース名。難易度 3 つ（左に難易度名・右に小さな「6ペア」と、ロック中なら鍵のマーク）と「とじる」。
-//  鍵の付いた難易度を押すと、ダイアログの中に「おうちの方に あけてもらってね」を出す（値段と購入の画面は子どもに見せない）。
-//  押したときに始めるか案内かは `CourseSelection` が決め、ゲームを始める・閉じるのは呼び出し側（`AppFlow`）が行う。
+//  鍵の付いた難易度を押すと、ダイアログの中に「おうちの方に あけてもらってね」と、その下に「おうちの方へ」を出す（値段と購入の画面は子どもに見せない）。
+//  「おうちの方へ」を押すと、ダイアログを閉じて保護者の確認を出す（購入が終わったら、押した難易度のゲームを始める）。
+//  押したときに始めるか案内かは `CourseSelection` が決め、ゲームを始める・閉じる・保護者の確認を出すのは呼び出し側（`AppFlow`）が行う。
 //
 
 import SwiftUI
@@ -19,6 +20,8 @@ struct CourseSelectDialogView: View {
     var onSelect: (Difficulty) -> CourseSelectResult? = { _ in nil }
     /// 「とじる」を押したとき
     var onClose: () -> Void = {}
+    /// 案内の下の「おうちの方へ」を押したとき（保護者の確認を出す）
+    var onOpenParents: () -> Void = {}
 
     var body: some View {
         let options = CourseSelection.options(hasPass: hasPass)
@@ -38,12 +41,7 @@ struct CourseSelectDialogView: View {
                 }
             }
             if selection.showsLockedGuide(hasPass: hasPass) {
-                Text("おうちの方に あけてもらってね")
-                    .appFont(Typography.noteStrong)
-                    .foregroundStyle(Palette.text)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("courseSelect.lockedGuide")
+                LockedParentsGuide(identifierPrefix: "courseSelect", onOpenParents: onOpenParents)
             }
             Button(action: onClose) {
                 Text("とじる")
@@ -96,6 +94,28 @@ private struct CourseDifficultyButton: View {
     }
 }
 
+/// 鍵の付いた難易度を押したあとの案内。「おうちの方に あけてもらってね」と、その下の丸い「おうちの方へ」（高さ 44 以上）。
+/// コース選択とクリアのダイアログで同じ見た目にする（値段は出さない。押すと保護者の確認が出る）
+struct LockedParentsGuide: View {
+    /// accessibilityIdentifier の頭（`courseSelect` なら `courseSelect.lockedGuide` と `courseSelect.lockedGuideParents`）
+    let identifierPrefix: String
+    let onOpenParents: () -> Void
+
+    var body: some View {
+        VStack(spacing: Metrics.cardSpacing) {
+            Text("おうちの方に あけてもらってね")
+                .appFont(Typography.noteStrong)
+                .foregroundStyle(Palette.text)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("\(identifierPrefix).lockedGuide")
+            Button("おうちの方へ", action: onOpenParents)
+                .buttonStyle(RoundButtonStyle())
+                .accessibilityIdentifier("\(identifierPrefix).lockedGuideParents")
+        }
+    }
+}
+
 extension View {
     /// 画面の流れが出しているコース選択のダイアログを、この画面（ホーム）の上に重ねる
     func courseSelectDialog(flow: AppFlow) -> some View {
@@ -115,7 +135,8 @@ private struct CourseSelectDialogModifier: ViewModifier {
                         selection: selection,
                         hasPass: flow.hasPass,
                         onSelect: flow.selectDifficulty,
-                        onClose: flow.closeCourseSelection
+                        onClose: flow.closeCourseSelection,
+                        onOpenParents: flow.openParentsForLockedCourse
                     )
                     .transition(.opacity)
                 }

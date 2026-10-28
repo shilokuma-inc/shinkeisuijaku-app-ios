@@ -2,8 +2,9 @@
 //  RootView.swift
 //  Shinkeisuijaku
 //
-//  アプリの一番外の画面。ホームを根にした `NavigationStack` に、プレイ（クリアのダイアログを含む）とスタンプちょうを積む。
+//  アプリの一番外の画面。ホームを根にした `NavigationStack` に、プレイ（クリアのダイアログを含む）・スタンプちょう・おうちの方への画面を積む。
 //  初回クリア前は、起動したときからプレイを積んでいるので、ホームを通らずにゲームが始まる。
+//  保護者の確認のダイアログは、ホームからもクリアのダイアログからも出すので、`NavigationStack` 全体の上に重ねる。
 //
 
 import SwiftUI
@@ -28,7 +29,6 @@ struct RootView: View {
             )
             .toolbar(.hidden, for: .navigationBar)
             .courseSelectDialog(flow: flow)
-            .parentalGateDialog(flow: flow)
             .navigationDestination(for: AppFlow.Destination.self) { destination in
                 switch destination {
                 case .game:
@@ -40,6 +40,7 @@ struct RootView: View {
                 }
             }
         }
+        .parentalGateDialog(flow: flow)
         .task {
             await flow.passStore.start()
         }
@@ -59,6 +60,7 @@ struct RootView: View {
             GameScreen(
                 session: session,
                 hasPass: flow.hasPass,
+                showsLockedGuide: flow.showsClearLockedGuide,
                 haptics: flow.haptics,
                 onQuit: flow.goHome,
                 onCleared: flow.recordClear,
@@ -76,9 +78,10 @@ struct RootView: View {
             .navigationBarBackButtonHidden()
     }
 
-    /// おうちの方への画面。戻るのは「ホームにもどる」だけ（仕様書の遷移先はホーム）
+    /// おうちの方への画面。戻るのは「ホームにもどる」だけ（仕様書の遷移先はホーム）。
+    /// 鍵の付いた難易度から来ていれば、購入が終わったらそのゲームを始める
     private var parentsScreen: some View {
-        ParentsView(passStore: flow.passStore, onHome: flow.goHome)
+        ParentsView(passStore: flow.passStore, onHome: flow.goHome, onPurchased: flow.purchaseCompleted)
             .toolbar(.hidden, for: .navigationBar)
             .navigationBarBackButtonHidden()
     }

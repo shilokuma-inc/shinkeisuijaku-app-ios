@@ -3,7 +3,8 @@
 //  Shinkeisuijaku
 //
 //  クリアのダイアログ（引き継ぎブックの 7 ページ・仕様書の「クリア」）。スタンプ・「よくできました！」・一言・ボタン。
-//  点数・回数は出さない。ボタンを押したときの行き先は呼び出し側（ホームと起動の流れ・購入の流れ）が決める。
+//  点数・回数は出さない。ボタンを押したときの行き先は呼び出し側（ホームと起動の流れ・購入の流れ。`AppFlow.handle`）が決める。
+//  鍵の付いた次の難易度を押したら、呼び出し側が押したものを覚え、ここに「おうちの方に あけてもらってね」と「おうちの方へ」を出す。
 //
 
 import SwiftUI
@@ -29,10 +30,9 @@ struct ClearDialogView: View {
     let outcome: ClearOutcome
     /// パスの権利があるか（次の難易度の鍵・おうちの方への案内に使う）
     let hasPass: Bool
+    /// 「おうちの方に あけてもらってね」を出すか（鍵の付いた次の難易度を押した後。パスを買ったら消す。`AppFlow.showsClearLockedGuide`）
+    var showsLockedGuide = false
     var onAction: (ClearAction) -> Void = { _ in }
-
-    /// 鍵の付いた次の難易度を押したか（「おうちの方に あけてもらってね」を出す）
-    @State private var showsLockedGuide = false
 
     var body: some View {
         DialogContainer {
@@ -53,10 +53,9 @@ struct ClearDialogView: View {
             if let next = outcome.nextDifficulty {
                 nextDifficultyButton(next)
                 if showsLockedGuide {
-                    Text("おうちの方に あけてもらってね")
-                        .appFont(Typography.noteStrong)
-                        .foregroundStyle(Palette.text)
-                        .accessibilityIdentifier("clear.lockedGuide")
+                    LockedParentsGuide(identifierPrefix: "clear") {
+                        onAction(.lockedGuideParents)
+                    }
                 }
             }
             surfaceButton("スタンプちょう", identifier: "clear.stampBook") {
@@ -81,15 +80,13 @@ struct ClearDialogView: View {
         .accessibilityIdentifier("clear.dialog")
     }
 
-    /// 次の難易度のボタン。鍵が付いていたら鍵のマークを付け、押すと案内を出す（値段と購入の画面は子どもに見せない）
+    /// 次の難易度のボタン。鍵が付いていたら鍵のマークを付け、押すと（呼び出し側が始めずに覚えて）案内を出す（値段と購入の画面は子どもに見せない）
     private func nextDifficultyButton(_ next: Difficulty) -> some View {
         let locked = outcome.isNextDifficultyLocked(hasPass: hasPass)
         return Button {
+            onAction(.nextDifficulty(next))
             if locked {
-                showsLockedGuide = true
                 AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
-            } else {
-                onAction(.nextDifficulty(next))
             }
         } label: {
             HStack(spacing: Metrics.cardSpacing) {
@@ -156,6 +153,8 @@ struct GameScreen: View {
     let session: GameSession
     /// パスの権利があるか（次の難易度の鍵・おうちの方への案内に使う）
     let hasPass: Bool
+    /// クリアのダイアログに鍵の案内を出すか（`AppFlow.showsClearLockedGuide`）
+    let showsLockedGuide: Bool
     let haptics: any Haptics
     let onQuit: () -> Void
     /// クリアを記録して結果を返す（同じゲームで二度呼ばれても 1 回だけ記録する。`AppFlow.recordClear()`）
@@ -170,7 +169,7 @@ struct GameScreen: View {
         }
         .overlay {
             if let outcome {
-                ClearDialogView(outcome: outcome, hasPass: hasPass, onAction: onClearAction)
+                ClearDialogView(outcome: outcome, hasPass: hasPass, showsLockedGuide: showsLockedGuide, onAction: onClearAction)
                     .transition(.opacity)
             }
         }
