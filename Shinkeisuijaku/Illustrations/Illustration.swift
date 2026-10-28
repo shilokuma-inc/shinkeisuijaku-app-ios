@@ -94,13 +94,14 @@ extension Path {
     }
 }
 
-/// 13 種類の絵を並べた見本の画面。撮影モードで開き、添付の画像と見比べるために使う
+/// 絵の見本の画面。上にヒントの目と「あ」、下に 13 種類の絵。撮影モードで開き、添付の画像・引き継ぎブックと見比べるために使う
 struct IllustrationCatalogView: View {
     /// 見本の列の数（添付の画像と同じ 3 列）
     private let columns = 3
 
     var body: some View {
         ScrollView {
+            symbols
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: Metrics.cardSpacing), count: columns),
                 spacing: Metrics.cardSpacing
@@ -122,6 +123,36 @@ struct IllustrationCatalogView: View {
         .background(Palette.background)
     }
 
+    /// ヒントの目（ボタンの見た目に置く）と、「あ」（金と銀のふちのスタンプに置く）
+    private var symbols: some View {
+        HStack(spacing: Metrics.screenHorizontalPadding) {
+            HStack(spacing: Metrics.cardSpacing) {
+                HintEyesView()
+                    .frame(height: Metrics.minTapTarget / 2)
+                Text("ヒント")
+                    .appFont(Typography.button)
+                    .foregroundStyle(Palette.text)
+            }
+            .padding(.horizontal, Metrics.screenHorizontalPadding)
+            .frame(minHeight: Metrics.buttonHeight)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius)
+                    .stroke(Palette.border, lineWidth: Metrics.borderWidth)
+            }
+            symbolStamp(rim: Palette.stampSilver, wash: Palette.stampSilverWash)
+            symbolStamp(rim: Palette.stampGold, wash: Palette.stampGoldWash)
+        }
+        .padding(.vertical, Metrics.screenHorizontalPadding)
+    }
+
+    /// 「あ」をふちの付いた丸に置いた見本（スタンプの部品はタスク 11 で作る）
+    private func symbolStamp(rim: Color, wash: Color) -> some View {
+        HiraganaSymbolView()
+            .frame(width: Metrics.stampBookMaxDiameter, height: Metrics.stampBookMaxDiameter)
+            .background(wash, in: Circle())
+            .overlay { Circle().stroke(rim, lineWidth: Metrics.stampRimWidth) }
+    }
 }
 
 #Preview {
