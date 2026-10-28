@@ -53,10 +53,9 @@ enum Metrics {
     static let homeArchRise: CGFloat = 18
     /// ホームのまとまり（アーチとタイトル・「あそぶ」・ほかの あそびかた）どうしのすき間
     static let homeSectionSpacing: CGFloat = 20
-    /// 1 行の表示（集めた数の札など）が入らないとき（文字を大きくしたとき）に縮める下限の割合
+    /// 1 行に収める文字（ホームのタイトル・「あと◯ペア」・集めた数の札など）が入らないとき（文字を大きくしたとき）に縮める下限の割合。
+    /// 画面ごとに分けず、どこも同じ割合にする（引き継ぎブックに値が無いので、文字を最大にしても読める大きさに残る半分にした）
     static let textMinimumScale: CGFloat = 0.5
-    /// ホームのタイトルが 1 行に入らないとき（文字を大きくしたとき）に縮める下限の割合
-    static let homeTitleMinimumScale: CGFloat = 0.5
     /// 丸いボタン（おうちの方へ）の内側の左右の余白
     static let roundButtonHorizontalPadding: CGFloat = 16
 
@@ -81,6 +80,9 @@ enum Metrics {
     static let hintIconHeight: CGFloat = 22
     /// 押しているあいだのボタンの透明度（引き継ぎブックに無いので、押したと分かる程度にした）
     static let pressedOpacity: Double = 0.7
+    /// 押せないときのボタンの透明度（引き継ぎブックに無い。押しているあいだとは別のトークンにして、片方だけ変えられるようにする。
+    /// 値は今の見た目を変えないよう、押しているあいだと同じにした）
+    static let disabledOpacity: Double = 0.7
     /// ボタンの中の鍵のマークの大きさ（難易度ボタン・次の難易度）
     static let lockIconSize: CGFloat = 16
     /// 難易度ボタン（コース選択）の内側の左右の余白（引き継ぎブックに値が無いので、6 ページの見本の見た目から決めた）

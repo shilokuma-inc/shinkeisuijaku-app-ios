@@ -137,3 +137,27 @@ struct ParentalGate: Equatable, Sendable {
         return .wrong
     }
 }
+
+/// 保護者の確認の読み上げの文（保護者向けなので漢字を含む大人向けの文）。
+/// 数字を押すたびに今の入力を、間違えたときに新しい問題を読み上げる（画面を見なくても、何を入れたか・次に何を解くかが分かるように）
+enum ParentalGateSpeech {
+    /// 問題の読み上げ（「問題 12 足す 7」。「＋」「＝ ？」を記号のまま読ませない）
+    static func question(_ question: ParentalGateQuestion) -> String {
+        String(localized: "問題 \(question.augend) 足す \(question.addend)")
+    }
+
+    /// 答えの欄の値（「12」。何も入れていなければ「未入力」）
+    static func inputValue(_ input: ParentalGateInput) -> String {
+        input.isEmpty ? String(localized: "未入力") : input.text
+    }
+
+    /// 数字を押した・消したあとに読み上げる、今の入力（「入力 12」「入力 未入力」）
+    static func inputChanged(_ input: ParentalGateInput) -> String {
+        String(localized: "入力 \(inputValue(input))")
+    }
+
+    /// 間違えたときに読み上げる文（「答えが違います。新しい問題は 34 足す 5 です。」）
+    static func wrong(next question: ParentalGateQuestion) -> String {
+        String(localized: "答えが違います。新しい問題は \(question.augend) 足す \(question.addend) です。")
+    }
+}

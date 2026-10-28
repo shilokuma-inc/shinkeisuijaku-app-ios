@@ -20,6 +20,8 @@ struct HomeView: View {
     var onOpenStampBook: () -> Void = {}
     var onOpenParents: () -> Void = {}
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -97,7 +99,11 @@ struct HomeView: View {
                 .appFont(Typography.noteStrong)
                 .foregroundStyle(Palette.muted)
                 .accessibilityAddTraits(.isHeader)
-            HStack(spacing: Metrics.cardSpacing) {
+            // 文字を大きくしたとき（アクセシビリティの大きさ）は、コース名が途中で折り返さないよう縦に積む
+            let layout = TextSizeLayout.stacksVertically(dynamicTypeSize)
+                ? AnyLayout(VStackLayout(spacing: Metrics.cardSpacing))
+                : AnyLayout(HStackLayout(spacing: Metrics.cardSpacing))
+            layout {
                 ForEach(Course.allCases, id: \.self) { course in
                     Button {
                         onChooseCourse(course)
@@ -140,7 +146,7 @@ struct HomeTitleView: View {
         Text(Self.coloredTitle)
             .appFont(Typography.homeTitle)
             .lineLimit(1)
-            .minimumScaleFactor(Metrics.homeTitleMinimumScale)
+            .minimumScaleFactor(Metrics.textMinimumScale)
             .accessibilityLabel(Text(verbatim: Self.title))
             .accessibilityAddTraits(.isHeader)
     }
@@ -178,7 +184,14 @@ struct PlayButton: View {
             .frame(maxWidth: .infinity, minHeight: Metrics.playButtonHeight)
         }
         .buttonStyle(PlayButtonStyle())
+        // 「・」を読ませず、「あそぶ ひらがな やさしい」と始めるゲームまで 1 つに読む
+        .accessibilityLabel(Text(verbatim: Self.accessibilityLabel(for: choice)))
         .accessibilityIdentifier("home.play")
+    }
+
+    /// 読み上げ（「あそぶ ひらがな やさしい」）
+    static func accessibilityLabel(for choice: GameChoice) -> String {
+        String(localized: "あそぶ \(choice.course.name) \(choice.difficulty.name)")
     }
 }
 

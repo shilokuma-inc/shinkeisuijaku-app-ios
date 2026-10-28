@@ -74,4 +74,14 @@ struct CourseSelectionTests {
         let unlocked = CourseSelection.options(hasPass: true)
         #expect(unlocked.map(\.accessibilityLabel) == ["やさしい 6ペア", "ふつう 8ペア", "むずかしい 10ペア"])
     }
+
+    /// 鍵の付いた難易度だけ、押すと案内が出ることをヒントで伝える（鍵の無いものは押すと始まるので付けない）
+    @Test
+    func accessibilityHintOnlyForLockedDifficulties() {
+        let locked = CourseSelection.options(hasPass: false)
+        let hint = CourseDifficultyOption.lockedAccessibilityHint
+        #expect(locked.map(\.accessibilityHint) == [nil, hint, hint])
+        #expect(CourseSelection.options(hasPass: true).allSatisfy { $0.accessibilityHint == nil })
+        #expect(hint.contains("おうちの方"))
+    }
 }

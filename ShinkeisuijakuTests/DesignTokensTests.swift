@@ -64,6 +64,15 @@ struct DesignTokensTests {
         #expect(hex(Palette.cardBack, style: .dark) == 0x8FB7F9)
     }
 
+    /// 画面の面の上に直接描く絵の線（ヒントの目）は、ライトは輪郭線と同じ、ダークは文字の色にして暗い面でも見えるようにする
+    @Test
+    func artLineOnSurfaceSwitchesWithAppearance() {
+        #expect(hex(Palette.artLineOnSurface, style: .light) == 0x2B3140)
+        #expect(hex(Palette.artLineOnSurface, style: .dark) == 0xF3E9DD)
+        #expect(hex(Palette.artLineOnSurface, style: .light) == hex(Palette.artOutline))
+        #expect(hex(Palette.artLineOnSurface, style: .dark) == hex(Palette.text, style: .dark))
+    }
+
     /// 始めに全部見せる時間は、初回クリア前は 4.8 秒、それ以降はペアの数で決まる
     @Test
     func revealAllDurationFollowsHandoffBook() {
@@ -72,6 +81,15 @@ struct DesignTokensTests {
         #expect(Motion.revealAllDuration(pairCount: 10, isBeforeFirstClear: false) == 3.4)
         #expect(Motion.revealAllDuration(pairCount: 6, isBeforeFirstClear: true) == 4.8)
         #expect(Motion.revealAllDuration(pairCount: 10, isBeforeFirstClear: true) == 4.8)
+    }
+
+    /// ボタンは、押しているあいだと押せないときに、それぞれのトークンの薄さにする
+    @Test
+    func buttonOpacityUsesSeparateTokens() {
+        #expect(ButtonOpacity.value(isPressed: false, isEnabled: true) == 1)
+        #expect(ButtonOpacity.value(isPressed: true, isEnabled: true) == Metrics.pressedOpacity)
+        #expect(ButtonOpacity.value(isPressed: false, isEnabled: false) == Metrics.disabledOpacity)
+        #expect(ButtonOpacity.value(isPressed: true, isEnabled: false) == Metrics.disabledOpacity)
     }
 
     /// 丸ゴの書体が端末に入っている（同梱しないため、名前が違うとシステムの書体に置き換わってしまう）

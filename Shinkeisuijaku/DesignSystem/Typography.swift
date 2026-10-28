@@ -63,6 +63,9 @@ enum Typography {
     static let note = TypographyToken(size: 12, face: .system(.regular), relativeTo: .caption)
     /// 小さな注記の強いもの（12・700。色は補助の文字）
     static let noteStrong = TypographyToken(size: 12, face: .system(.bold), relativeTo: .caption)
+    /// 保護者の確認の問題と答えの数字（引き継ぎブックに無いので、「あと◯ペア」の数字と同じ 24・800 にした。
+    /// 値は同じだが用途が違うので名前を分け、片方を変えてももう片方が変わらないようにする）
+    static let parentalGateNumber = TypographyToken(size: 24, face: .system(.heavy), relativeTo: .title2)
     /// おうちの方への画面のまとまりの見出し（引き継ぎブックに無いので、「あと◯ペア」の文字と同じ 17・800 にした）
     static let parentsSectionTitle = TypographyToken(size: 17, face: .system(.heavy), relativeTo: .headline)
 

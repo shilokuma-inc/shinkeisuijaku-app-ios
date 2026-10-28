@@ -89,7 +89,6 @@ struct AppFlowWindowsTests {
         #expect(windows.store.data.ownedStampIDs == [firstStamp.id, secondStamp.id])
     }
 
-    /// 片方の窓で「やめる」・窓を閉じる（プレイ画面がゲームを止める）と、その窓のゲームだけが止まり、もう片方のゲームは続く
     /// パスがあり 2 つの窓で同じコースの ふつう を続けてクリアしても、パス専用のスタンプは先の窓の 1 回だけで、後の窓は通常のスタンプになる（Q7）
     @Test
     func passStampOnlyOnceAcrossWindows() throws {
@@ -101,10 +100,14 @@ struct AppFlowWindowsTests {
         let firstStamp = try #require(windows.first.recordClear()?.awardedStamp)
         let secondStamp = try #require(windows.second.recordClear()?.awardedStamp)
         #expect(firstStamp == .pass(.animals, .silver))
-        #expect(secondStamp != .pass(.animals, .silver))
+        guard case .regular = secondStamp else {
+            Issue.record("後の窓は通常のスタンプになる: \(secondStamp)")
+            return
+        }
         #expect(windows.store.data.ownedStampIDs.count == 2)
     }
 
+    /// 片方の窓で「やめる」・窓を閉じる（プレイ画面がゲームを止める）と、その窓のゲームだけが止まり、もう片方のゲームは続く
     @Test
     func quittingOneWindowKeepsOtherGame() async throws {
         let windows = makeTwoWindows()
@@ -119,6 +122,21 @@ struct AppFlowWindowsTests {
         #expect(first.phase == .quit)
         #expect(second.phase == .playing)
         #expect(windows.second.path == [.game])
+    }
+
+    /// 初回クリア前に後から開いた窓の、起動してすぐのゲーム（どうぶつ・やさしい）は、先の窓で選んだ前回のコースと難易度を保存し直さない
+    @Test
+    func launchGameInNewWindowKeepsLastChoice() throws {
+        let windows = makeTwoWindows()
+        windows.first.startGame(GameChoice(course: .hiragana, difficulty: .easy))
+        let savesBefore = windows.store.saveCount
+        let third = makeFlow(windows.services, seed: 3)
+        let launched = try #require(third.session)
+        #expect(launched.course == .animals)
+        #expect(launched.difficulty == .easy)
+        #expect(windows.store.saveCount == savesBefore, "起動してすぐのゲームでは保存しない")
+        #expect(windows.store.data.lastCourse == .hiragana)
+        #expect(windows.store.data.lastDifficulty == .easy)
     }
 
     /// 片方の窓で買ったパスは、ストアを共有するもう片方の窓でもすぐ使える

@@ -97,11 +97,12 @@ struct StampBookView: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
                 HStack(spacing: Metrics.stampBookSpacing) {
                     ForEach(Array(row.enumerated()), id: \.offset) { columnIndex, entry in
+                        let index = rowIndex * columns + columnIndex
                         StampView(slot: entry.slot, diameter: diameter)
-                            // 部品は読み上げを持たないので、枠の状態を言葉で付ける
+                            // 部品は読み上げを持たないので、枠の状態を言葉で付ける（まだの通常の枠は場所の番号。番号は 1 から）
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Text(verbatim: StampBookLayout.accessibilityLabel(for: entry)))
-                            .accessibilityIdentifier("\(identifier).\(rowIndex * columns + columnIndex)")
+                            .accessibilityLabel(Text(verbatim: StampBookLayout.accessibilityLabel(for: entry, position: index + 1)))
+                            .accessibilityIdentifier("\(identifier).\(index)")
                     }
                 }
             }

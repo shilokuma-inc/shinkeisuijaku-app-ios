@@ -71,6 +71,15 @@ struct ClearOutcomeTests {
         #expect(!hard.isNextDifficultyLocked(hasPass: false))
     }
 
+    /// 次の難易度のボタンは、鍵が付いていれば「かぎ」も読み上げる。むずかしいのときはボタンが無いので nil
+    @Test
+    func nextDifficultyAccessibilityLabelSaysLockState() {
+        let easy = clear(.animals, .easy)
+        #expect(easy.nextDifficultyAccessibilityLabel(hasPass: false) == "ふつうで あそぶ かぎ")
+        #expect(easy.nextDifficultyAccessibilityLabel(hasPass: true) == "ふつうで あそぶ")
+        #expect(clear(.animals, .hard, hasPass: true).nextDifficultyAccessibilityLabel(hasPass: true) == nil)
+    }
+
     /// 「もっと むずかしいのは おうちの方へ」はパスを買った後は出さない
     @Test
     func parentsGuideOnlyWithoutPass() {
@@ -102,5 +111,27 @@ struct ClearOutcomeTests {
         #expect(store.data.ownedStampIDs.count == 1)
         #expect(store.data.hasClearedOnce)
         #expect(recorder.outcome == first)
+    }
+
+    /// クリアの大きなスタンプは、もらったスタンプの名前を読み上げる。全部そろった後の飾りのホシは読み上げない
+    @Test
+    func stampAccessibilityLabelNamesTheAwardedStamp() {
+        let regular = ClearOutcome(
+            course: .animals,
+            difficulty: .easy,
+            awardedStamp: .regular(.cat),
+            data: .initial
+        )
+        #expect(regular.stampAccessibilityLabel == "ネコ の スタンプ")
+        let pass = ClearOutcome(
+            course: .hiragana,
+            difficulty: .hard,
+            awardedStamp: .pass(.hiragana, .gold),
+            data: .initial
+        )
+        #expect(pass.stampAccessibilityLabel == "ひらがな むずかしい の とくべつな スタンプ")
+        let allCollected = clear(.animals, .easy, data: AppData(ownedStampIDs: Stamp.regularStamps.map(\.id)))
+        #expect(allCollected.awardedStamp == nil)
+        #expect(allCollected.stampAccessibilityLabel == nil)
     }
 }

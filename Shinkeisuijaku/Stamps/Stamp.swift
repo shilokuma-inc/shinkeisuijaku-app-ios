@@ -23,6 +23,14 @@ enum StampRim: String, CaseIterable, Sendable {
         case .hard: self = .gold
         }
     }
+
+    /// このふちをもらう難易度（銀は ふつう、金は むずかしい）
+    var difficulty: Difficulty {
+        switch self {
+        case .silver: .normal
+        case .gold: .hard
+        }
+    }
 }
 
 /// スタンプ 1 つ
@@ -52,6 +60,16 @@ enum Stamp: Hashable, Sendable {
             "regular.\(picture.rawValue)"
         case let .pass(course, rim):
             "pass.\(course.rawValue).\(rim.rawValue)"
+        }
+    }
+
+    /// スタンプの名前（読み上げに使う）。通常は絵の名前（「ネコ」）、パス専用はコースと難易度（「どうぶつ ふつう」）
+    var name: String {
+        switch self {
+        case let .regular(picture):
+            picture.name
+        case let .pass(course, rim):
+            String(localized: "\(course.name) \(rim.difficulty.name)")
         }
     }
 

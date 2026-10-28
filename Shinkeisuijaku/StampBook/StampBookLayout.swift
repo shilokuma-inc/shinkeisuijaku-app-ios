@@ -77,33 +77,23 @@ struct StampBookLayout: Equatable {
         String(localized: "あつめた スタンプ \(totalCount) こ の うち \(collectedCount) こ")
     }
 
-    /// 枠の読み上げ。もらったスタンプは名前（「ネコ」「どうぶつ ふつう」）、まだの枠は「まだ」、鍵の枠は「かぎ」。
-    /// パス専用の枠は、どの枠かが分かるよう、まだ・かぎ の前にも名前を付ける（通常の枠は、まだのものの名前を出さない）
-    static func accessibilityLabel(for entry: Entry) -> String {
+    /// 枠の読み上げ。もらったスタンプは名前（「ネコ」「どうぶつ ふつう」）、まだの通常の枠は場所の番号と「まだ」（「2ばんめ まだ」）、
+    /// パス専用のまだ・鍵の枠は名前と状態（「どうぶつ むずかしい まだ」「ひらがな ふつう かぎ」）。
+    /// まだの通常の枠は、どのスタンプが入るかを言わない（集める楽しみを残す）が、「まだ」が続いても今どこを読んでいるか分かるよう、場所の番号を付ける
+    /// - Parameters:
+    ///   - entry: 枠
+    ///   - position: 通常の枠の場所の番号（上の段の左から 1・2・3…）。パス専用の枠では使わない
+    static func accessibilityLabel(for entry: Entry, position: Int) -> String {
         switch (entry.stamp, entry.slot) {
-        case let (.regular(picture), .owned):
-            picture.name
+        case (_, .owned):
+            entry.stamp.name
         case (.regular, _):
-            String(localized: "まだ")
-        case (.pass, .owned):
-            passName(of: entry.stamp)
+            String(localized: "\(position)ばんめ まだ")
         case (.pass, .empty):
-            String(localized: "\(passName(of: entry.stamp)) まだ")
+            String(localized: "\(entry.stamp.name) まだ")
         case (.pass, .locked):
-            String(localized: "\(passName(of: entry.stamp)) かぎ")
+            String(localized: "\(entry.stamp.name) かぎ")
         }
-    }
-
-    /// パス専用のスタンプの名前（コースと難易度。「どうぶつ ふつう」）
-    private static func passName(of stamp: Stamp) -> String {
-        guard case let .pass(course, rim) = stamp else {
-            return ""
-        }
-        let difficulty: Difficulty = switch rim {
-        case .silver: .normal
-        case .gold: .hard
-        }
-        return "\(course.name) \(difficulty.name)"
     }
 
     /// スタンプの直径。使える幅に 4 列が入る大きさを、72〜80 の範囲に収める（既定: 幅から決める）

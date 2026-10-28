@@ -4,7 +4,7 @@
 //
 //  クリアのダイアログ（引き継ぎブックの 7 ページ・仕様書の「クリア」）。スタンプ・「よくできました！」・一言・ボタン。
 //  点数・回数は出さない。ボタンを押したときの行き先は呼び出し側（ホームと起動の流れ・購入の流れ。`AppFlow.handle`）が決める。
-//  鍵の付いた次の難易度を押したら、呼び出し側が押したものを覚え、ここに「おうちの方に あけてもらってね」と「おうちの方へ」を出す。
+//  鍵の付いた次の難易度を押したら、呼び出し側が押したものを覚え、ここに「おうちの方に あけてもらってね」と「おうちの方へ」を出す（VoiceOver のフォーカスは案内へ移す）。
 //
 
 import SwiftUI
@@ -34,9 +34,12 @@ struct ClearDialogView: View {
     var showsLockedGuide = false
     var onAction: (ClearAction) -> Void = { _ in }
 
+    /// 鍵の案内の文に VoiceOver のフォーカスがあるか（鍵の付いた次の難易度を押したら、案内へ移す）
+    @AccessibilityFocusState private var isLockedGuideFocused: Bool
+
     var body: some View {
         DialogContainer {
-            ClearStampView(stamp: outcome.awardedStamp ?? .regular(.star))
+            ClearStampView(stamp: outcome.awardedStamp ?? .regular(.star), accessibilityLabel: outcome.stampAccessibilityLabel)
                 .padding(.bottom, Metrics.cardSpacing)
             Text("よくできました！")
                 .appFont(Typography.dialogTitle)
@@ -53,7 +56,7 @@ struct ClearDialogView: View {
             if let next = outcome.nextDifficulty {
                 nextDifficultyButton(next)
                 if showsLockedGuide {
-                    LockedParentsGuide(identifierPrefix: "clear") {
+                    LockedParentsGuide(identifierPrefix: "clear", isFocused: $isLockedGuideFocused) {
                         onAction(.lockedGuideParents)
                     }
                 }
@@ -85,8 +88,9 @@ struct ClearDialogView: View {
         let locked = outcome.isNextDifficultyLocked(hasPass: hasPass)
         return Button {
             onAction(.nextDifficulty(next))
+            // 案内を出したら、VoiceOver のフォーカスを案内の文へ移す（初めて出すときは、案内が出たときに案内の側で移す）
             if locked {
-                AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
+                isLockedGuideFocused = true
             }
         } label: {
             HStack(spacing: Metrics.cardSpacing) {
@@ -94,14 +98,17 @@ struct ClearDialogView: View {
                     .appFont(Typography.button)
                 if locked {
                     LockShape()
-                        .fill(Palette.muted)
+                        // 鍵のマークはボタンの文字と同じ色（引き継ぎブックの 6 ページの見本の「8ペア」と同じ濃さ。コース選択とクリアでそろえる）
+                        .fill(Palette.text)
                         .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityLabel("かぎ")
                 }
             }
             .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
         }
         .buttonStyle(SurfaceButtonStyle())
+        // 鍵のマークは絵だけなので、「ふつうで あそぶ かぎ」と状態を言葉でまとめ、押すと案内が出ることをヒントで伝える
+        .accessibilityLabel(Text(verbatim: outcome.nextDifficultyAccessibilityLabel(hasPass: hasPass) ?? ""))
+        .accessibilityHint(Text(verbatim: locked ? CourseDifficultyOption.lockedAccessibilityHint : ""))
         .accessibilityIdentifier("clear.nextDifficulty")
     }
 
@@ -148,7 +155,7 @@ final class ClearRecorder {
     }
 }
 
-/// プレイ画面とクリアのダイアログ。クリアになったら記録してもらい（スタンプ・保存・振動）、ダイアログを出す
+/// プレイ画面とクリアのダイアログ。クリアになったら記録してもらい（スタンプ・保存・振動）、ダイアログを出す（薄く出す。「視差効果を減らす」ではすぐ出す。スタンプのかたむきは止まった形なのでそのまま）
 struct GameScreen: View {
     let session: GameSession
     /// パスの権利があるか（次の難易度の鍵・おうちの方への案内に使う）
@@ -162,6 +169,7 @@ struct GameScreen: View {
     let onClearAction: (ClearAction) -> Void
 
     @State private var outcome: ClearOutcome?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         PlayView(session: session, haptics: haptics, onQuit: onQuit) {
@@ -173,7 +181,7 @@ struct GameScreen: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: Motion.dialogFadeDuration), value: outcome)
+        .animation(MotionPolicy(reduceMotion: reduceMotion).dialogAnimation, value: outcome)
         // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じる（記録は呼び出し側がゲームごとにやり直す）
         .onChange(of: ObjectIdentifier(session)) {
             outcome = nil

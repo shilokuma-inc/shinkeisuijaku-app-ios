@@ -97,18 +97,18 @@ struct StampBookLayoutTests {
 
     // MARK: - 読み上げ
 
-    /// もらったスタンプは名前、まだの枠は「まだ」、鍵の枠は「かぎ」と読み上げる（パス専用の枠は、どの枠かも言う）
+    /// もらったスタンプは名前、まだの枠は「まだ」、鍵の枠は「かぎ」と読み上げる（パス専用の枠は、どの枠かも言う。まだの通常の枠は場所の番号）
     @Test
     func slotLabelsDescribeTheState() {
         let book = layout(owned: [.regular(.cat), .pass(.animals, .silver)], hasPass: false)
-        let label = StampBookLayout.accessibilityLabel(for:)
-        #expect(label(book.regular[0]) == "ネコ")
-        #expect(label(book.regular[1]) == "まだ", "まだの通常の枠は、どのスタンプかを言わない")
-        #expect(label(book.pass[0]) == "どうぶつ ふつう")
-        #expect(label(book.pass[1]) == "ひらがな ふつう かぎ")
-        #expect(label(book.pass[3]) == "ひらがな むずかしい かぎ")
+        let label = StampBookLayout.accessibilityLabel(for:position:)
+        #expect(label(book.regular[0], 1) == "ネコ")
+        #expect(label(book.regular[1], 2) == "2ばんめ まだ", "まだの通常の枠は、どのスタンプかを言わずに場所の番号だけ")
+        #expect(label(book.pass[0], 1) == "どうぶつ ふつう")
+        #expect(label(book.pass[1], 2) == "ひらがな ふつう かぎ")
+        #expect(label(book.pass[3], 4) == "ひらがな むずかしい かぎ")
         let unlocked = layout(hasPass: true)
-        #expect(label(unlocked.pass[2]) == "どうぶつ むずかしい まだ")
+        #expect(label(unlocked.pass[2], 3) == "どうぶつ むずかしい まだ")
     }
 
     // MARK: - 直径

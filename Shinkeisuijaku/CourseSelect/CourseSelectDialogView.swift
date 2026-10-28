@@ -16,12 +16,15 @@ struct CourseSelectDialogView: View {
     let selection: CourseSelection
     /// パスの権利があるか（鍵のマークと案内に使う）
     let hasPass: Bool
-    /// 難易度を押したとき。始めたか案内を出したかを返す（案内のときは VoiceOver でも読み上げる）
+    /// 難易度を押したとき。始めたか案内を出したかを返す（案内のときは VoiceOver のフォーカスを案内へ移す）
     var onSelect: (Difficulty) -> CourseSelectResult? = { _ in nil }
     /// 「とじる」を押したとき
     var onClose: () -> Void = {}
     /// 案内の下の「おうちの方へ」を押したとき（保護者の確認を出す）
     var onOpenParents: () -> Void = {}
+
+    /// 鍵の案内の文に VoiceOver のフォーカスがあるか（鍵の付いた難易度を押したら、案内へ移す）
+    @AccessibilityFocusState private var isLockedGuideFocused: Bool
 
     var body: some View {
         let options = CourseSelection.options(hasPass: hasPass)
@@ -35,13 +38,14 @@ struct CourseSelectDialogView: View {
                 .padding(.bottom, Metrics.cardSpacing)
             ForEach(options, id: \.difficulty) { option in
                 CourseDifficultyButton(option: option, reservesLockSpace: reservesLockSpace) {
+                    // 案内を出したら、VoiceOver のフォーカスを案内の文へ移す（初めて出すときは、案内が出たときに案内の側で移す）
                     if onSelect(option.difficulty) == .showLockedGuide {
-                        AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
+                        isLockedGuideFocused = true
                     }
                 }
             }
             if selection.showsLockedGuide(hasPass: hasPass) {
-                LockedParentsGuide(identifierPrefix: "courseSelect", onOpenParents: onOpenParents)
+                LockedParentsGuide(identifierPrefix: "courseSelect", isFocused: $isLockedGuideFocused, onOpenParents: onOpenParents)
             }
             Button(action: onClose) {
                 Text("とじる")
@@ -63,25 +67,31 @@ private struct CourseDifficultyButton: View {
     let reservesLockSpace: Bool
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Metrics.cardSpacing) {
-                Text(option.difficulty.name)
-                    .appFont(Typography.difficultyButton)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Metrics.cardSpacing)
-                Text(option.pairsText)
-                    .appFont(Typography.difficultyPairs)
-                    .fixedSize(horizontal: false, vertical: true)
-                if option.isLocked {
-                    LockShape()
-                        .fill(Palette.muted)
-                        .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityLabel("かぎ")
-                } else if reservesLockSpace {
-                    Color.clear
-                        .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityHidden(true)
+            Group {
+                if TextSizeLayout.stacksVertically(dynamicTypeSize) {
+                    // 文字を大きくしたとき（アクセシビリティの大きさ）は、難易度名が途中で折り返さないよう、「6ペア」と鍵を下の行にする
+                    VStack(alignment: .leading, spacing: 0) {
+                        name
+                            .lineLimit(1)
+                            .minimumScaleFactor(Metrics.textMinimumScale)
+                        HStack(spacing: Metrics.cardSpacing) {
+                            pairs
+                            lock
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Metrics.pairCountVerticalPadding)
+                } else {
+                    HStack(spacing: Metrics.cardSpacing) {
+                        name
+                        Spacer(minLength: Metrics.cardSpacing)
+                        pairs
+                        lock
+                    }
                 }
             }
             .padding(.horizontal, Metrics.difficultyButtonHorizontalPadding)
@@ -90,28 +100,34 @@ private struct CourseDifficultyButton: View {
         .buttonStyle(SurfaceButtonStyle())
         // 鍵のマークは絵だけなので、「ふつう 8ペア かぎ」と状態を言葉でまとめて読み上げる
         .accessibilityLabel(Text(verbatim: option.accessibilityLabel))
+        .accessibilityHint(Text(verbatim: option.accessibilityHint ?? ""))
         .accessibilityIdentifier("courseSelect.difficulty.\(option.difficulty.rawValue)")
     }
-}
 
-/// 鍵の付いた難易度を押したあとの案内。「おうちの方に あけてもらってね」と、その下の丸い「おうちの方へ」（高さ 44 以上）。
-/// コース選択とクリアのダイアログで同じ見た目にする（値段は出さない。押すと保護者の確認が出る）
-struct LockedParentsGuide: View {
-    /// accessibilityIdentifier の頭（`courseSelect` なら `courseSelect.lockedGuide` と `courseSelect.lockedGuideParents`）
-    let identifierPrefix: String
-    let onOpenParents: () -> Void
+    /// 難易度名（18・800）
+    private var name: some View {
+        Text(option.difficulty.name)
+            .appFont(Typography.difficultyButton)
+            .fixedSize(horizontal: false, vertical: true)
+    }
 
-    var body: some View {
-        VStack(spacing: Metrics.cardSpacing) {
-            Text("おうちの方に あけてもらってね")
-                .appFont(Typography.noteStrong)
-                .foregroundStyle(Palette.text)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("\(identifierPrefix).lockedGuide")
-            Button("おうちの方へ", action: onOpenParents)
-                .buttonStyle(RoundButtonStyle())
-                .accessibilityIdentifier("\(identifierPrefix).lockedGuideParents")
+    /// 右の小さな「6ペア」（12・700）
+    private var pairs: some View {
+        Text(option.pairsText)
+            .appFont(Typography.difficultyPairs)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// 鍵のマーク。鍵が無くても場所を空けるときは、同じ大きさの透明な枠
+    @ViewBuilder private var lock: some View {
+        if option.isLocked {
+            LockShape()
+                // 鍵のマークはボタンの文字と同じ色（引き継ぎブックの 6 ページの見本の「8ペア」と同じ濃さ。コース選択とクリアでそろえる）
+                .fill(Palette.text)
+                .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
+        } else if reservesLockSpace {
+            Color.clear
+                .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
         }
     }
 }
@@ -123,9 +139,10 @@ extension View {
     }
 }
 
-/// コース選択のダイアログを重ねる。出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする
+/// コース選択のダイアログを重ねる。出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする（「視差効果を減らす」ではすぐ切り替える）
 private struct CourseSelectDialogModifier: ViewModifier {
     let flow: AppFlow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -141,7 +158,7 @@ private struct CourseSelectDialogModifier: ViewModifier {
                     .transition(.opacity)
                 }
             }
-            .animation(.easeOut(duration: Motion.dialogFadeDuration), value: flow.courseSelection)
+            .animation(MotionPolicy(reduceMotion: reduceMotion).dialogAnimation, value: flow.courseSelection)
     }
 }
 

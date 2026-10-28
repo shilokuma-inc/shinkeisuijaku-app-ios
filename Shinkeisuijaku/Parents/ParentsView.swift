@@ -19,6 +19,8 @@ struct ParentsView: View {
     @State private var model: ParentsModel
     @Environment(\.openURL) private var openURL
 
+    /// `State(initialValue:)` なので、親が画面を作り直して init が呼ばれるたびに `ParentsModel` を作るが、使うのは画面の寿命で最初の 1 つだけで、残りはすぐ捨てる。
+    /// `ParentsModel` の init は参照を持つだけで、値段の読み込みと購入・復元は画面に出てから（`.task`）始めるので、捨てるものが何かを始めることは無い
     /// - Parameter onPurchased: 購入が終わったとき（鍵の付いた難易度から来ていれば、画面の流れがそのゲームを始める）
     init(passStore: PassStore, onHome: @escaping () -> Void = {}, onPurchased: @escaping () -> Void = {}) {
         _model = State(initialValue: ParentsModel(passStore: passStore, onPurchased: onPurchased))

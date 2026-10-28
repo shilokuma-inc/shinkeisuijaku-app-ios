@@ -54,6 +54,12 @@ struct CardAppearance: Equatable {
         }
         return word
     }
+
+    /// めくっている途中の角度で、表を描くか（0 で裏・180 で表。半分の 90 度からは表）。
+    /// 裏を描いているあいだは表の中身を描かないので、裏のカードの中身は見た目にも読み上げにも出ない
+    static func showsFront(atAngle angle: Double) -> Bool {
+        angle >= Motion.flipAngleDegrees / 2
+    }
 }
 
 /// カード 1 枚。与えられた大きさいっぱいに描き、めくり・揃ったときの動きを付ける
@@ -65,12 +71,20 @@ struct CardView: View {
     let isMatched: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// 揃ったときの見た目にしたか（揃ってから `Motion.matchDelay` だけ遅れて変わる）
-    @State private var showsMatched = false
+    /// 揃ったときの見た目にしたか（揃ってから `Motion.matchDelay` だけ遅れて変わる。初めから揃っているカードは遅らせない）
+    @State private var showsMatched: Bool
     /// 揃ったときのふくらみ（一度ふくらんで元に戻る）
     @State private var matchPulse = false
 
+    init(face: Card.Face, isFaceUp: Bool, isMatched: Bool) {
+        self.face = face
+        self.isFaceUp = isFaceUp
+        self.isMatched = isMatched
+        _showsMatched = State(initialValue: isMatched)
+    }
+
     var body: some View {
+        let motion = MotionPolicy(reduceMotion: reduceMotion)
         GeometryReader { proxy in
             let shortSide = min(proxy.size.width, proxy.size.height)
             let appearance = CardAppearance(face: face, isFaceUp: isFaceUp, showsMatched: showsMatched)
@@ -82,29 +96,35 @@ struct CardView: View {
                         front: { CardFrontSide(appearance: appearance, shortSide: shortSide) }
                     )
                 )
-                .animation(reduceMotion ? nil : .easeInOut(duration: Motion.flipDuration), value: isFaceUp)
+                .animation(motion.flipAnimation, value: isFaceUp)
         }
-        .scaleEffect(matchPulse && !reduceMotion ? Motion.matchScale : 1)
+        .scaleEffect(matchPulse && motion.pulsesOnMatch ? Motion.matchScale : 1)
         .shadow(color: Palette.cardShadow, radius: Metrics.cardShadowRadius, y: Metrics.cardShadowOffsetY)
-        .onAppear {
-            showsMatched = isMatched
-        }
-        .onChange(of: isMatched) { _, matched in
-            updateMatched(matched)
+        // 揃ったら少しおいて緑にする。待つあいだに画面を離れたら（ゲームが変わったら）、待つのをやめる
+        .task(id: isMatched) {
+            await updateMatched(isMatched, motion: motion)
         }
     }
 
-    /// 揃ったら少しおいて緑にし、ふくらんで戻す。「視差効果を減らす」ではふくらまずに切り替えるだけ
-    private func updateMatched(_ matched: Bool) {
+    /// 揃ったら `Motion.matchDelay` おいて緑にし、ふくらんで戻す。
+    /// 「視差効果を減らす」でも同じだけ待つが、ふくらまずに切り替えるだけ（`MotionPolicy`）
+    private func updateMatched(_ matched: Bool, motion: MotionPolicy) async {
         guard matched else {
             showsMatched = false
             return
         }
-        if reduceMotion {
+        guard !showsMatched else {
+            return
+        }
+        try? await Task.sleep(for: .seconds(motion.matchDelay))
+        guard !Task.isCancelled else {
+            return
+        }
+        guard motion.pulsesOnMatch else {
             showsMatched = true
             return
         }
-        withAnimation(.easeOut(duration: Motion.matchPulseDuration).delay(Motion.matchDelay)) {
+        withAnimation(.easeOut(duration: Motion.matchPulseDuration)) {
             showsMatched = true
             matchPulse = true
         } completion: {
@@ -129,12 +149,12 @@ private struct CardFlip<Back: View, Front: View>: ViewModifier, Animatable {
 
     func body(content: Content) -> some View {
         ZStack {
-            if angle < Motion.flipAngleDegrees / 2 {
-                back()
-            } else {
+            if CardAppearance.showsFront(atAngle: angle) {
                 // 表は裏返しに見えないよう、さらに半回転しておく
                 front()
                     .rotation3DEffect(.degrees(Motion.flipAngleDegrees), axis: (x: 0, y: 1, z: 0))
+            } else {
+                back()
             }
         }
         .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0))

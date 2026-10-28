@@ -84,7 +84,7 @@ struct DesignTokenCatalogView: View {
                             .appFont(Typography.note)
                             .foregroundStyle(Palette.muted)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.5)
+                            .minimumScaleFactor(Metrics.textMinimumScale)
                     }
                 }
             }

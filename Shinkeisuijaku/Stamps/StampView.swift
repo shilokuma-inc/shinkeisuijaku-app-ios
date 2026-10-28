@@ -115,6 +115,8 @@ struct StampView: View {
 /// クリア画面の大きなスタンプ（直径 124・8 度かたむける・点線の青いふち 3）
 struct ClearStampView: View {
     let stamp: Stamp
+    /// 読み上げ（もらったスタンプの名前。`ClearOutcome.stampAccessibilityLabel`）。nil なら飾りとして読み上げない
+    var accessibilityLabel: String?
 
     var body: some View {
         StampView(slot: .owned(stamp), diameter: Metrics.clearStampDiameter)
@@ -127,7 +129,10 @@ struct ClearStampView: View {
                     )
             }
             .rotationEffect(.degrees(Metrics.clearStampRotationDegrees))
-            .accessibilityHidden(true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(verbatim: accessibilityLabel ?? ""))
+            .accessibilityAddTraits(.isImage)
+            .accessibilityHidden(accessibilityLabel == nil)
     }
 }
 

@@ -103,12 +103,14 @@ struct ParentsModelTests {
         #expect(status.canRestore)
     }
 
-    /// 値段を読み終えたのに読めなかったら、読み込み中ではなく読めなかったことと開き直す案内を出す（PR #43 の申し送り）
+    /// 値段を読み終えたのに読めなかったら、読み込み中ではなく読めなかったことと、開き直す・前面に戻ると読み直す案内を出す（PR #43・#46 の申し送り）
     @Test
-    func failedPriceShowsFailure() {
+    func failedPriceShowsFailure() throws {
         let status = ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false, priceLoadFailed: true)
         #expect(status.priceText == String(localized: "読み込めませんでした"))
-        #expect(status.priceFailureNote != nil)
+        let note = try #require(status.priceFailureNote)
+        #expect(note.contains("開き直す"))
+        #expect(note.contains("戻ってくる"), "前面に戻ったときにも読み直すことを伝える")
         #expect(!status.canPurchase)
         #expect(status.canRestore)
         #expect(ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false).priceFailureNote == nil, "読み込み中は案内を出さない")
