@@ -54,8 +54,10 @@ final class SystemHaptics: Haptics {
                 CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: pulse.start, duration: pulse.duration)
             }
             let player = try engine.makePlayer(with: CHHapticPattern(events: events, parameters: []))
-            engine.notifyWhenPlayersFinished { _ in .stopEngine }
             try player.start(atTime: CHHapticTimeImmediate)
+            // 鳴らし始めてから登録する（鳴っているものが無いと、すぐに呼ばれてエンジンが止まるため）。
+            // Core Haptics の内部のキューから呼ばれるので、MainActor に縛られない閉包にする
+            engine.notifyWhenPlayersFinished { @Sendable _ in .stopEngine }
             clearEngine = engine
         } catch {
             clearEngine = nil
