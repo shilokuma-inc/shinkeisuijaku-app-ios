@@ -24,16 +24,21 @@ struct PassStoreTests {
         return Fixture(store: PassStore(backend: backend, dataStore: data), backend: backend, data: data)
     }
 
-    /// 取引の変化が画面の値に届くまで、ほかの処理に順番を譲って待つ（時間では待たない）
-    private func waitUntil(_ condition: () -> Bool) async {
-        for _ in 0..<1_000 where !condition() {
+    /// 取引の変化が画面の値に届くまで、ほかの処理に順番を譲って待つ（時間では待たない）。
+    /// 条件が成り立ったかを返す（前提の待ち合わせは `#require` で確かめ、成り立たないまま先へ進まない）
+    private func waitUntil(_ condition: () -> Bool) async -> Bool {
+        for _ in 0..<1_000 {
+            if condition() {
+                return true
+            }
             await Task.yield()
         }
+        return condition()
     }
 
     /// 起動直後は端末内のキャッシュで表示し、StoreKit で確かめたら StoreKit の値に合わせる（キャッシュも直す）
     @Test
-    func startUsesCacheThenStoreKit() async {
+    func startUsesCacheThenStoreKit() async throws {
         let fixture = makeStore(entitled: false, cache: true)
         let store = fixture.store
         let data = fixture.data
@@ -42,7 +47,7 @@ struct PassStoreTests {
         #expect(!store.hasPass, "権利の正は StoreKit")
         #expect(!data.data.hasPassCache)
         // 値段は権利の確認を待たせないよう、待たずに読み始める
-        await waitUntil { store.displayPrice != nil }
+        try #require(await waitUntil { store.displayPrice != nil })
         #expect(store.displayPrice == "¥100")
         store.stop()
     }
@@ -88,8 +93,7 @@ struct PassStoreTests {
         await store.purchase()
         backend.entitled = true
         backend.sendTransactionUpdate()
-        await waitUntil { store.hasPass }
-        #expect(store.hasPass)
+        #expect(await waitUntil { store.hasPass })
         store.stop()
     }
 
@@ -104,8 +108,7 @@ struct PassStoreTests {
         #expect(store.hasPass)
         backend.entitled = false
         backend.sendTransactionUpdate()
-        await waitUntil { !store.hasPass }
-        #expect(!store.hasPass)
+        #expect(await waitUntil { !store.hasPass })
         #expect(!data.data.hasPassCache)
         store.stop()
     }
@@ -156,14 +159,14 @@ struct PassStoreTests {
 
     /// 購入より前に読み始めた権利の確認が後から終わっても、購入の結果を古い値で上書きしない
     @Test
-    func staleEntitlementCheckDoesNotUndoPurchase() async {
+    func staleEntitlementCheckDoesNotUndoPurchase() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
         await store.start()
         backend.holdsEntitlementChecks = true
         let refreshing = Task { await store.refreshEntitlement() }
-        await waitUntil { backend.heldEntitlementChecks == 1 }
+        try #require(await waitUntil { backend.heldEntitlementChecks == 1 })
         #expect(await store.purchase() == .purchased)
         #expect(store.hasPass)
         backend.releaseEntitlementChecks()
@@ -175,17 +178,17 @@ struct PassStoreTests {
 
     /// あとから読み始めた確認（承認待ちが承認された など）が先に終わったら、前に読み始めた古い確認の結果で戻さない
     @Test
-    func olderEntitlementCheckFinishingLastIsIgnored() async {
+    func olderEntitlementCheckFinishingLastIsIgnored() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
         await store.start()
         backend.holdsEntitlementChecks = true
         let older = Task { await store.refreshEntitlement() }
-        await waitUntil { backend.heldEntitlementChecks == 1 }
+        try #require(await waitUntil { backend.heldEntitlementChecks == 1 })
         backend.entitled = true
         let newer = Task { await store.refreshEntitlement() }
-        await waitUntil { backend.heldEntitlementChecks == 2 }
+        try #require(await waitUntil { backend.heldEntitlementChecks == 2 })
         backend.releaseLatestEntitlementCheck()
         await newer.value
         #expect(store.hasPass)
@@ -198,13 +201,13 @@ struct PassStoreTests {
 
     /// 購入の途中にもう一度押しても、何もせずに busy を返す（復元も同じ）
     @Test
-    func secondTapWhileBusyIsIgnored() async {
+    func secondTapWhileBusyIsIgnored() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
         backend.holdsPurchase = true
         let purchasing = Task { await store.purchase() }
-        await waitUntil { store.isBusy }
+        try #require(await waitUntil { store.isBusy })
         #expect(await store.purchase() == .busy)
         #expect(await store.restore() == .busy)
         backend.releasePurchase()
@@ -230,18 +233,18 @@ struct PassStoreTests {
 
     /// 起動時に値段を読めなかったら、権利を確かめ直すとき（と画面から頼まれたとき）に読み直す
     @Test
-    func priceIsReloadedWhenMissing() async {
+    func priceIsReloadedWhenMissing() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
         backend.displayPrice = nil
         await store.start()
-        await waitUntil { backend.finishedPriceLoadCount == 1 }
+        try #require(await waitUntil { backend.finishedPriceLoadCount == 1 })
         #expect(store.displayPrice == nil)
         backend.displayPrice = "¥100"
         backend.holdsPriceLoads = true
         await store.refreshEntitlement()
-        await waitUntil { backend.heldPriceLoadCount == 1 }
+        try #require(await waitUntil { backend.heldPriceLoadCount == 1 })
         // 読み直している途中に重ねて頼んでも、読み込みは 1 つだけ
         store.reloadPriceIfMissing()
         for _ in 0..<100 {
@@ -249,8 +252,7 @@ struct PassStoreTests {
         }
         #expect(backend.heldPriceLoadCount == 1)
         backend.releasePriceLoads()
-        await waitUntil { store.displayPrice != nil }
-        #expect(store.displayPrice == "¥100")
+        #expect(await waitUntil { store.displayPrice == "¥100" })
         store.stop()
     }
 
@@ -283,8 +285,7 @@ struct PassStoreTests {
         await store.start()
         backend.entitled = true
         backend.sendTransactionUpdate()
-        await waitUntil { store.hasPass }
-        #expect(store.hasPass)
+        #expect(await waitUntil { store.hasPass })
         #expect(backend.heldPriceLoadCount == 1, "読み込みは起動時の 1 つだけで、取引の変化では増やさない")
         backend.releasePriceLoads()
         store.stop()
@@ -292,13 +293,13 @@ struct PassStoreTests {
 
     /// 止めた後に値段を読み終わっても、値段は変えない
     @Test
-    func stopCancelsPriceReload() async {
+    func stopCancelsPriceReload() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
         backend.holdsPriceLoads = true
         await store.start()
-        await waitUntil { backend.heldPriceLoadCount == 1 }
+        try #require(await waitUntil { backend.heldPriceLoadCount == 1 })
         store.stop()
         backend.releasePriceLoads()
         for _ in 0..<100 {
