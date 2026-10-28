@@ -63,3 +63,22 @@ struct PrimaryButtonStyle: ButtonStyle {
         }
     }
 }
+
+/// 丸いボタン（面の色の地・境界線 1・角丸は完全な丸・高さ 44 以上・文字は 15 の 700）。ホームの上の右と、鍵の案内の下の「おうちの方へ」。
+/// 押しているあいだは薄くする
+struct RoundButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .appFont(Typography.button)
+            .foregroundStyle(Palette.text)
+            .padding(.horizontal, Metrics.roundButtonHorizontalPadding)
+            .frame(minHeight: Metrics.roundButtonMinHeight)
+            .background(Palette.surface, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(Palette.border, lineWidth: Metrics.borderWidth)
+            }
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? Metrics.pressedOpacity : 1)
+    }
+}

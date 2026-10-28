@@ -103,6 +103,17 @@ struct ParentsModelTests {
         #expect(status.canRestore)
     }
 
+    /// 値段を読み終えたのに読めなかったら、読み込み中ではなく読めなかったことと開き直す案内を出す（PR #43 の申し送り）
+    @Test
+    func failedPriceShowsFailure() {
+        let status = ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false, priceLoadFailed: true)
+        #expect(status.priceText == String(localized: "読み込めませんでした"))
+        #expect(status.priceFailureNote != nil)
+        #expect(!status.canPurchase)
+        #expect(status.canRestore)
+        #expect(ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false).priceFailureNote == nil, "読み込み中は案内を出さない")
+    }
+
     /// 処理中は、購入も復元も押せない
     @Test
     func busyDisablesButtons() {
@@ -153,9 +164,9 @@ struct ParentsModelTests {
         model.passStore.stop()
     }
 
-    /// 承認待ちのあと、画面を開いたまま承認されたら、承認待ちの文を消して購入済みの表示にする
+    /// 承認待ちのあと、画面を開いたまま承認されたら、承認待ちの文を購入できた文に変えて購入済みの表示にする（PR #43 の申し送り）
     @Test
-    func approvalWhileOpenHidesPendingMessage() async throws {
+    func approvalWhileOpenShowsPurchased() async throws {
         let fixture = try await makeModel()
         let model = fixture.model
         fixture.backend.nextPurchaseResult = .pending
@@ -165,18 +176,38 @@ struct ParentsModelTests {
         fixture.backend.entitled = true
         fixture.backend.sendTransactionUpdate()
         try #require(await waitUntil { model.status.hasPass })
-        #expect(model.visibleMessage == nil)
+        #expect(model.visibleMessage == .purchased)
         #expect(!model.status.showsPurchaseButton)
         model.passStore.stop()
     }
 
-    /// 権利が付いたあとは、承認待ち・うまくいかなかった文を出さず、うまくいった文は出す
+    /// 買ったあと、画面を開いたまま権利が外れたら（返金など）、購入できた文を隠して購入のボタンに戻す（PR #43 の申し送り）
+    @Test
+    func revocationWhileOpenHidesSuccess() async throws {
+        let fixture = try await makeModel()
+        let model = fixture.model
+        model.request(.purchase)
+        await model.runPendingAction()
+        try #require(model.visibleMessage == .purchased)
+        fixture.backend.entitled = false
+        fixture.backend.sendTransactionUpdate()
+        try #require(await waitUntil { !model.status.hasPass })
+        #expect(model.visibleMessage == nil)
+        #expect(model.status.showsPurchaseButton)
+        model.passStore.stop()
+    }
+
+    /// 権利が付いたら、承認待ちは購入できた文に変え、うまくいかなかった文は出さない。権利が外れたら、うまくいった文を出さない
     @Test
     func visibleMessageFollowsPass() {
         #expect(ParentsMessage.visible(.pending, hasPass: false) == .pending)
         #expect(ParentsMessage.visible(.purchaseFailed, hasPass: false) == .purchaseFailed)
-        #expect(ParentsMessage.visible(.pending, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.restoreNotFound, hasPass: false) == .restoreNotFound)
+        #expect(ParentsMessage.visible(.purchased, hasPass: false) == nil)
+        #expect(ParentsMessage.visible(.restored, hasPass: false) == nil)
+        #expect(ParentsMessage.visible(.pending, hasPass: true) == .purchased)
         #expect(ParentsMessage.visible(.restoreNotFound, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.busy, hasPass: true) == nil)
         #expect(ParentsMessage.visible(.purchased, hasPass: true) == .purchased)
         #expect(ParentsMessage.visible(.restored, hasPass: true) == .restored)
         #expect(ParentsMessage.visible(nil, hasPass: true) == nil)
@@ -278,6 +309,29 @@ struct ParentsModelTests {
         model.appear()
         #expect(await waitUntil { model.status.displayPrice == "¥100" })
         #expect(model.status.canPurchase)
+        passStore.stop()
+    }
+
+    /// 値段を読めなかったら読めなかった表示にし、読み直し始めたら読み込み中に戻し、読めたら値段を出す
+    @Test
+    func priceFailureUntilReloaded() async throws {
+        let backend = FakePassStoreBackend()
+        backend.displayPrice = nil
+        let passStore = PassStore(backend: backend, dataStore: InMemoryAppDataStore(data: .initial))
+        let model = ParentsModel(passStore: passStore)
+        #expect(model.status.priceText == String(localized: "読み込み中…"), "読み始める前は読み込み中")
+        await passStore.start()
+        try #require(await waitUntil { passStore.priceLoadFailed })
+        #expect(model.status.priceText == String(localized: "読み込めませんでした"))
+        backend.displayPrice = "¥100"
+        backend.holdsPriceLoads = true
+        model.appear()
+        try #require(await waitUntil { backend.heldPriceLoadCount == 1 })
+        #expect(model.status.priceText == String(localized: "読み込み中…"))
+        #expect(model.status.priceFailureNote == nil)
+        backend.releasePriceLoads()
+        #expect(await waitUntil { model.status.priceText == "¥100" })
+        #expect(!passStore.priceLoadFailed)
         passStore.stop()
     }
 

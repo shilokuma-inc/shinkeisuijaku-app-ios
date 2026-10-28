@@ -74,12 +74,20 @@ enum ParentsMessage: Equatable, Sendable {
         }
     }
 
-    /// 権利の有無に合わせて出す文。権利が付いたあとは、権利が無いことを前提にした文（承認待ち・うまくいかなかった）を出さない
+    /// 権利の有無に合わせて出す文。
+    /// 権利が付いたら、承認待ちは購入できた文に変え（画面を開いたまま承認された）、うまくいかなかった文は出さない。
+    /// 権利が外れたら（返金・ほかの端末での変化）、うまくいった文（購入できた・復元できた）を出さない
     static func visible(_ message: ParentsMessage?, hasPass: Bool) -> ParentsMessage? {
-        guard let message, hasPass, message == .pending || message.isProblem else {
-            return message
+        guard let message else {
+            return nil
         }
-        return nil
+        if hasPass {
+            if message == .pending {
+                return .purchased
+            }
+            return message.isProblem ? nil : message
+        }
+        return message == .purchased || message == .restored ? nil : message
     }
 
     /// うまくいかなかったことを伝える文か（文の前に付ける印を変える。色だけに頼らず、言葉でも伝わる文にしている）
@@ -99,6 +107,8 @@ struct ParentsPassStatus: Equatable, Sendable {
     let displayPrice: String?
     /// 購入・復元の途中か（押してから処理が始まるまでを含む）
     let isBusy: Bool
+    /// 値段を読み終えたのに読めなかったか（読み込み中とは別の表示にする）
+    var priceLoadFailed = false
 
     /// 「購入する」を出すか（購入済みなら出さず、その旨を出す）
     var showsPurchaseButton: Bool {
@@ -120,9 +130,17 @@ struct ParentsPassStatus: Equatable, Sendable {
         showsRestoreButton && !isBusy
     }
 
-    /// 値段の欄に出す文字（読めるまでは読み込み中の表示。値段を直書きしない）
+    /// 値段の欄に出す文字（読めるまでは読み込み中、読めなかったらその旨の表示。値段を直書きしない）
     var priceText: String {
-        displayPrice ?? String(localized: "読み込み中…")
+        if let displayPrice {
+            return displayPrice
+        }
+        return priceLoadFailed ? String(localized: "読み込めませんでした") : String(localized: "読み込み中…")
+    }
+
+    /// 値段を読めなかったときに、値段の下に出す説明（読めたとき・読み込み中は nil）
+    var priceFailureNote: String? {
+        displayPrice == nil && priceLoadFailed ? String(localized: "通信できる状態で、この画面を開き直すと読み込みます。") : nil
     }
 }
 
@@ -143,13 +161,16 @@ final class ParentsModel {
     private(set) var pendingAction: ParentsAction?
 
     @ObservationIgnored let passStore: PassStore
+    /// 購入が終わったとき（`.purchased`）に呼ぶ。画面の流れが、押した難易度のゲームを始めるのに使う
+    @ObservationIgnored private let onPurchased: () -> Void
 
-    init(passStore: PassStore) {
+    init(passStore: PassStore, onPurchased: @escaping () -> Void = {}) {
         self.passStore = passStore
+        self.onPurchased = onPurchased
     }
 
-    /// 画面に出す結果の文。パスの権利が付いたら、承認待ち・うまくいかなかった文は出さない
-    /// （画面を開いたまま承認された・ほかの端末で買われたときに、「購入済み」と食い違う文を残さない）
+    /// 画面に出す結果の文。画面を開いたまま権利が変わっても（承認された・ほかの端末で買われた・返金された）、
+    /// 「購入済み」かどうかと食い違う文を残さない（承認されたら購入できた文に変わり、画面がそれを読み上げる）
     var visibleMessage: ParentsMessage? {
         ParentsMessage.visible(message, hasPass: passStore.hasPass)
     }
@@ -159,7 +180,8 @@ final class ParentsModel {
         ParentsPassStatus(
             hasPass: passStore.hasPass,
             displayPrice: passStore.displayPrice,
-            isBusy: passStore.isBusy || pendingAction != nil
+            isBusy: passStore.isBusy || pendingAction != nil,
+            priceLoadFailed: passStore.priceLoadFailed
         )
     }
 
@@ -176,19 +198,26 @@ final class ParentsModel {
         pendingAction = action
     }
 
-    /// 押された処理を進め、結果の文を出す（画面の寿命の `.task(id:)` から呼ぶ）。押された処理が無ければ何もしない
+    /// 押された処理を進め、結果の文を出す（画面の寿命の `.task(id:)` から呼ぶ）。押された処理が無ければ何もしない。
+    /// 購入が終わったら、処理を終えてから `onPurchased` を呼ぶ（呼ばれた先で画面が変わっても、処理中のまま残らない）
     func runPendingAction() async {
         guard let action = pendingAction else {
             return
         }
         // 前の結果の文は、新しい処理を始めたら消す（やめたときに古い文が残らないように）
         message = nil
+        var purchased = false
         switch action {
         case .purchase:
-            message = ParentsMessage(purchase: await passStore.purchase())
+            let result = await passStore.purchase()
+            purchased = result == .purchased
+            message = ParentsMessage(purchase: result)
         case .restore:
             message = ParentsMessage(restore: await passStore.restore())
         }
         pendingAction = nil
+        if purchased {
+            onPurchased()
+        }
     }
 }

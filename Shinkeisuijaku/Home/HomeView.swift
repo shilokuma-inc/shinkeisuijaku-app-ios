@@ -74,20 +74,9 @@ struct HomeView: View {
 
     /// 上の右の「おうちの方へ」（丸いボタン・高さ 44 以上）
     private var parentsButton: some View {
-        Button(action: onOpenParents) {
-            Text("おうちの方へ")
-                .appFont(Typography.button)
-                .foregroundStyle(Palette.text)
-                .padding(.horizontal, Metrics.roundButtonHorizontalPadding)
-                .frame(minHeight: Metrics.roundButtonMinHeight)
-                .background(Palette.surface, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Palette.border, lineWidth: Metrics.borderWidth)
-                }
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.parents")
+        Button("おうちの方へ", action: onOpenParents)
+            .buttonStyle(RoundButtonStyle())
+            .accessibilityIdentifier("home.parents")
     }
 
     /// 「ほかの あそびかた」の どうぶつ・ひらがな（押すとコース選択）

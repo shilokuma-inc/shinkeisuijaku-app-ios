@@ -19,8 +19,9 @@ struct ParentsView: View {
     @State private var model: ParentsModel
     @Environment(\.openURL) private var openURL
 
-    init(passStore: PassStore, onHome: @escaping () -> Void = {}) {
-        _model = State(initialValue: ParentsModel(passStore: passStore))
+    /// - Parameter onPurchased: 購入が終わったとき（鍵の付いた難易度から来ていれば、画面の流れがそのゲームを始める）
+    init(passStore: PassStore, onHome: @escaping () -> Void = {}, onPurchased: @escaping () -> Void = {}) {
+        _model = State(initialValue: ParentsModel(passStore: passStore, onPurchased: onPurchased))
         self.onHome = onHome
     }
 
@@ -81,6 +82,13 @@ struct ParentsView: View {
                 .foregroundStyle(Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
             priceRow(status)
+            if let note = status.priceFailureNote {
+                Text(verbatim: note)
+                    .appFont(Typography.note)
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("parents.priceFailure")
+            }
             if status.showsPurchaseButton {
                 Button {
                     model.request(.purchase)
@@ -111,7 +119,7 @@ struct ParentsView: View {
         }
     }
 
-    /// 価格（読めるまでは読み込み中の表示。値段は StoreKit の表示をそのまま出す）
+    /// 価格（読めるまでは読み込み中、読めなかったらその旨の表示。値段は StoreKit の表示をそのまま出す）
     private func priceRow(_ status: ParentsPassStatus) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Metrics.cardSpacing) {
             Text("価格")
