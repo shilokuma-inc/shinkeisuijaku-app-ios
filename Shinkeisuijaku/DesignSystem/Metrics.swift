@@ -55,6 +55,8 @@ enum Metrics {
     static let capsuleCornerRadius: CGFloat = 999
     /// ヒントのボタンの目のアイコンの高さ
     static let hintIconHeight: CGFloat = 22
+    /// 押しているあいだのボタンの透明度（引き継ぎブックに無いので、押したと分かる程度にした）
+    static let pressedOpacity: Double = 0.7
     /// タップできる大きさの下限（すべてのボタン）
     static let minTapTarget: CGFloat = 44
 
