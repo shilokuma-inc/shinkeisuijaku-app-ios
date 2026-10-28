@@ -54,6 +54,20 @@ struct ClearOutcome: Equatable {
         return next.requiresPass && !hasPass
     }
 
+    /// クリアのダイアログの大きなスタンプの読み上げ（「ネコ の スタンプ」「どうぶつ ふつう の とくべつな スタンプ」）。
+    /// 通常のスタンプが全部そろった後（もらわなかった）は nil で、飾りのホシを読み上げない
+    var stampAccessibilityLabel: String? {
+        guard let awardedStamp else {
+            return nil
+        }
+        switch awardedStamp {
+        case .regular:
+            return String(localized: "\(awardedStamp.name) の スタンプ")
+        case .pass:
+            return String(localized: "\(awardedStamp.name) の とくべつな スタンプ")
+        }
+    }
+
     /// 「もっと むずかしいのは おうちの方へ」を出すか（パスを買った後は出さない）
     static func showsParentsGuide(hasPass: Bool) -> Bool {
         !hasPass

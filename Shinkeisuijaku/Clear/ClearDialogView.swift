@@ -36,7 +36,7 @@ struct ClearDialogView: View {
 
     var body: some View {
         DialogContainer {
-            ClearStampView(stamp: outcome.awardedStamp ?? .regular(.star))
+            ClearStampView(stamp: outcome.awardedStamp ?? .regular(.star), accessibilityLabel: outcome.stampAccessibilityLabel)
                 .padding(.bottom, Metrics.cardSpacing)
             Text("よくできました！")
                 .appFont(Typography.dialogTitle)
