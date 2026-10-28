@@ -61,18 +61,23 @@ final class AppFlow {
     @ObservationIgnored private let timing: GameTiming
     @ObservationIgnored private let clock: any GameClock
     @ObservationIgnored private var generator: any RandomNumberGenerator
+    /// 保護者の確認の問題を選ぶ乱数（確認を出すたびに、ダイアログがこの値から始める。UI テストでは種を固定したもの）
+    @ObservationIgnored let parentalGateGenerator: any RandomNumberGenerator
     /// 遊んでいるゲームのクリアの記録。ゲームごとに作り直し、1 回のゲームで 1 回だけ記録する
     @ObservationIgnored private var recorder: ClearRecorder?
 
     /// 保存の中身を見て、初回クリア前ならゲームを始めた状態で用意する
-    /// - Parameter generator: カードを配る乱数。テストでは種を固定したものを渡す
+    /// - Parameters:
+    ///   - generator: カードを配る・スタンプを選ぶ乱数。テストと UI テストでは種を固定したものを渡す
+    ///   - parentalGateGenerator: 保護者の確認の問題を選ぶ乱数。UI テストでは種を固定したものを渡す
     init(
         store: any AppDataStore,
         passStore: PassStore,
         haptics: any Haptics,
         timing: GameTiming = .standard,
         clock: any GameClock = SystemGameClock(),
-        generator: any RandomNumberGenerator = SystemRandomNumberGenerator()
+        generator: any RandomNumberGenerator = SystemRandomNumberGenerator(),
+        parentalGateGenerator: any RandomNumberGenerator = SystemRandomNumberGenerator()
     ) {
         self.store = store
         self.passStore = passStore
@@ -80,6 +85,7 @@ final class AppFlow {
         self.timing = timing
         self.clock = clock
         self.generator = generator
+        self.parentalGateGenerator = parentalGateGenerator
         let data = store.load()
         lastChoice = GameChoice(course: data.lastCourse, difficulty: data.lastDifficulty)
         if let choice = LaunchRules.launchGame(data) {
