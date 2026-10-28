@@ -126,7 +126,8 @@ struct PlayView: View {
                 .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
             }
             .buttonStyle(SurfaceButtonStyle())
-            .disabled(!session.canShowHint)
+            // 押せないあいだも、短いあいだ（ハズレを戻す・ヒント）は薄くしない（`PlayScreen.hintLooksEnabled`）
+            .disabled(!PlayScreen.hintLooksEnabled(phase: session.phase))
             .accessibilityHint(Text("うらの カードを すこしの あいだ ぜんぶ みせるよ"))
             .accessibilityIdentifier("play.hint")
             Button {

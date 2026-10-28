@@ -14,4 +14,16 @@ enum PlayScreen {
     static func remainingPairsLabel(course: Course, remainingPairs: Int) -> String {
         String(localized: "\(course.name) あと \(remainingPairs) ペア")
     }
+
+    /// ヒントのボタンを押せる見た目にするか。ハズレを裏に戻すまで（0.9 秒）とヒントを見せているあいだ（1.1 秒）は、
+    /// 押しても何もしない（`GameSession.showHint()` が `.playing` のときだけ進める）が、薄くしない（遊ぶたびにボタンがちらつかないように）。
+    /// 始めに全部見せているあいだ・揃ってクリアを待っているあいだ・クリアの後・やめた後は、しばらく押せないので薄くする
+    static func hintLooksEnabled(phase: GameSession.Phase) -> Bool {
+        switch phase {
+        case .playing, .resolvingMismatch, .hinting:
+            true
+        case .ready, .revealingAll, .finishing, .cleared, .quit:
+            false
+        }
+    }
 }
