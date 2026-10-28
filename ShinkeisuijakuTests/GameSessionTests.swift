@@ -120,6 +120,16 @@ struct GameSessionTests {
         #expect(session.remainingPairs == 10)
     }
 
+    /// すぐ戻る時計（撮影モード・UI テスト用）でも、全部見せてからめくれる状態になる
+    @Test
+    func instantClockReachesPlaying() async {
+        let session = makeSession(clock: InstantGameClock())
+        session.start()
+        #expect(session.phase == .revealingAll)
+        await session.waitForPendingWork()
+        #expect(session.phase == .playing)
+    }
+
     // MARK: - 始めに全部見せる
 
     /// 始めに全部のカードを見せ、そのあいだは押せない。時間がたつとめくれるようになる

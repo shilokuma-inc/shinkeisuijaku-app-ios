@@ -23,6 +23,13 @@ struct SystemGameClock: GameClock {
     }
 }
 
+/// 待たずにすぐ戻る時計（撮影モードで、デモの盤面をすぐ用意するため。UI テストでも待ち時間を短くするのに使う）
+struct InstantGameClock: GameClock {
+    func sleep(for seconds: TimeInterval) async {
+        await Task.yield()
+    }
+}
+
 /// ゲームの秒数。値はデザイントークン（引き継ぎブックの「動き」）から作り、UI テストでは短くする
 struct GameTiming: Sendable {
     /// 始めに全部見せる時間（ペアの数・初回クリア前か から決める）
