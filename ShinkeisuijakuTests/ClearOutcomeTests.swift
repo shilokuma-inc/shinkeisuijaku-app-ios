@@ -71,6 +71,15 @@ struct ClearOutcomeTests {
         #expect(!hard.isNextDifficultyLocked(hasPass: false))
     }
 
+    /// 次の難易度のボタンは、鍵が付いていれば「かぎ」も読み上げる。むずかしいのときはボタンが無いので nil
+    @Test
+    func nextDifficultyAccessibilityLabelSaysLockState() {
+        let easy = clear(.animals, .easy)
+        #expect(easy.nextDifficultyAccessibilityLabel(hasPass: false) == "ふつうで あそぶ かぎ")
+        #expect(easy.nextDifficultyAccessibilityLabel(hasPass: true) == "ふつうで あそぶ")
+        #expect(clear(.animals, .hard, hasPass: true).nextDifficultyAccessibilityLabel(hasPass: true) == nil)
+    }
+
     /// 「もっと むずかしいのは おうちの方へ」はパスを買った後は出さない
     @Test
     func parentsGuideOnlyWithoutPass() {

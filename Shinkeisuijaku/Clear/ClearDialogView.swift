@@ -4,7 +4,7 @@
 //
 //  クリアのダイアログ（引き継ぎブックの 7 ページ・仕様書の「クリア」）。スタンプ・「よくできました！」・一言・ボタン。
 //  点数・回数は出さない。ボタンを押したときの行き先は呼び出し側（ホームと起動の流れ・購入の流れ。`AppFlow.handle`）が決める。
-//  鍵の付いた次の難易度を押したら、呼び出し側が押したものを覚え、ここに「おうちの方に あけてもらってね」と「おうちの方へ」を出す。
+//  鍵の付いた次の難易度を押したら、呼び出し側が押したものを覚え、ここに「おうちの方に あけてもらってね」と「おうちの方へ」を出す（VoiceOver のフォーカスは案内へ移す）。
 //
 
 import SwiftUI
@@ -34,6 +34,9 @@ struct ClearDialogView: View {
     var showsLockedGuide = false
     var onAction: (ClearAction) -> Void = { _ in }
 
+    /// 鍵の案内の文に VoiceOver のフォーカスがあるか（鍵の付いた次の難易度を押したら、案内へ移す）
+    @AccessibilityFocusState private var isLockedGuideFocused: Bool
+
     var body: some View {
         DialogContainer {
             ClearStampView(stamp: outcome.awardedStamp ?? .regular(.star), accessibilityLabel: outcome.stampAccessibilityLabel)
@@ -53,7 +56,7 @@ struct ClearDialogView: View {
             if let next = outcome.nextDifficulty {
                 nextDifficultyButton(next)
                 if showsLockedGuide {
-                    LockedParentsGuide(identifierPrefix: "clear") {
+                    LockedParentsGuide(identifierPrefix: "clear", isFocused: $isLockedGuideFocused) {
                         onAction(.lockedGuideParents)
                     }
                 }
@@ -85,8 +88,9 @@ struct ClearDialogView: View {
         let locked = outcome.isNextDifficultyLocked(hasPass: hasPass)
         return Button {
             onAction(.nextDifficulty(next))
+            // 案内を出したら、VoiceOver のフォーカスを案内の文へ移す（初めて出すときは、案内が出たときに案内の側で移す）
             if locked {
-                AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
+                isLockedGuideFocused = true
             }
         } label: {
             HStack(spacing: Metrics.cardSpacing) {
@@ -96,12 +100,14 @@ struct ClearDialogView: View {
                     LockShape()
                         .fill(Palette.muted)
                         .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityLabel("かぎ")
                 }
             }
             .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
         }
         .buttonStyle(SurfaceButtonStyle())
+        // 鍵のマークは絵だけなので、「ふつうで あそぶ かぎ」と状態を言葉でまとめ、押すと案内が出ることをヒントで伝える
+        .accessibilityLabel(Text(verbatim: outcome.nextDifficultyAccessibilityLabel(hasPass: hasPass) ?? ""))
+        .accessibilityHint(Text(verbatim: locked ? CourseDifficultyOption.lockedAccessibilityHint : ""))
         .accessibilityIdentifier("clear.nextDifficulty")
     }
 

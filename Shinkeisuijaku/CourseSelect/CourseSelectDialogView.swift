@@ -16,12 +16,15 @@ struct CourseSelectDialogView: View {
     let selection: CourseSelection
     /// パスの権利があるか（鍵のマークと案内に使う）
     let hasPass: Bool
-    /// 難易度を押したとき。始めたか案内を出したかを返す（案内のときは VoiceOver でも読み上げる）
+    /// 難易度を押したとき。始めたか案内を出したかを返す（案内のときは VoiceOver のフォーカスを案内へ移す）
     var onSelect: (Difficulty) -> CourseSelectResult? = { _ in nil }
     /// 「とじる」を押したとき
     var onClose: () -> Void = {}
     /// 案内の下の「おうちの方へ」を押したとき（保護者の確認を出す）
     var onOpenParents: () -> Void = {}
+
+    /// 鍵の案内の文に VoiceOver のフォーカスがあるか（鍵の付いた難易度を押したら、案内へ移す）
+    @AccessibilityFocusState private var isLockedGuideFocused: Bool
 
     var body: some View {
         let options = CourseSelection.options(hasPass: hasPass)
@@ -35,13 +38,14 @@ struct CourseSelectDialogView: View {
                 .padding(.bottom, Metrics.cardSpacing)
             ForEach(options, id: \.difficulty) { option in
                 CourseDifficultyButton(option: option, reservesLockSpace: reservesLockSpace) {
+                    // 案内を出したら、VoiceOver のフォーカスを案内の文へ移す（初めて出すときは、案内が出たときに案内の側で移す）
                     if onSelect(option.difficulty) == .showLockedGuide {
-                        AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
+                        isLockedGuideFocused = true
                     }
                 }
             }
             if selection.showsLockedGuide(hasPass: hasPass) {
-                LockedParentsGuide(identifierPrefix: "courseSelect", onOpenParents: onOpenParents)
+                LockedParentsGuide(identifierPrefix: "courseSelect", isFocused: $isLockedGuideFocused, onOpenParents: onOpenParents)
             }
             Button(action: onClose) {
                 Text("とじる")
@@ -90,6 +94,7 @@ private struct CourseDifficultyButton: View {
         .buttonStyle(SurfaceButtonStyle())
         // 鍵のマークは絵だけなので、「ふつう 8ペア かぎ」と状態を言葉でまとめて読み上げる
         .accessibilityLabel(Text(verbatim: option.accessibilityLabel))
+        .accessibilityHint(Text(verbatim: option.accessibilityHint ?? ""))
         .accessibilityIdentifier("courseSelect.difficulty.\(option.difficulty.rawValue)")
     }
 }

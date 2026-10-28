@@ -25,6 +25,16 @@ struct CourseDifficultyOption: Equatable, Sendable {
         let words = [difficulty.name, pairsText] + (isLocked ? [String(localized: "かぎ")] : [])
         return words.joined(separator: " ")
     }
+
+    /// VoiceOver のヒント（押すとどうなるか）。鍵の付いたものだけ、案内が出ることを伝える（鍵の無いものは押すと始まるので付けない）
+    var accessibilityHint: String? {
+        isLocked ? Self.lockedAccessibilityHint : nil
+    }
+
+    /// 鍵の付いた難易度（コース選択・クリアの次の難易度）を押したときのヒント（ゲームは始まらず、案内が出る）
+    static var lockedAccessibilityHint: String {
+        String(localized: "おすと おうちの方に あけてもらう あんないが でるよ")
+    }
 }
 
 /// コース選択のダイアログで難易度を押したときにすること

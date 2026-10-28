@@ -54,6 +54,15 @@ struct ClearOutcome: Equatable {
         return next.requiresPass && !hasPass
     }
 
+    /// 次の難易度のボタンの読み上げ（「ふつうで あそぶ かぎ」）。鍵のマークは絵だけなので、状態を言葉でも伝える。むずかしいのときは nil（ボタンを出さない）
+    func nextDifficultyAccessibilityLabel(hasPass: Bool) -> String? {
+        guard let nextDifficulty else {
+            return nil
+        }
+        let title = String(localized: "\(nextDifficulty.name)で あそぶ")
+        return isNextDifficultyLocked(hasPass: hasPass) ? String(localized: "\(title) かぎ") : title
+    }
+
     /// クリアのダイアログの大きなスタンプの読み上げ（「ネコ の スタンプ」「どうぶつ ふつう の とくべつな スタンプ」）。
     /// 通常のスタンプが全部そろった後（もらわなかった）は nil で、飾りのホシを読み上げない
     var stampAccessibilityLabel: String? {
