@@ -153,9 +153,9 @@ struct ParentsModelTests {
         model.passStore.stop()
     }
 
-    /// 承認待ちのあと、画面を開いたまま承認されたら、承認待ちの文を消して購入済みの表示にする
+    /// 承認待ちのあと、画面を開いたまま承認されたら、承認待ちの文を購入できた文に変えて購入済みの表示にする（PR #43 の申し送り）
     @Test
-    func approvalWhileOpenHidesPendingMessage() async throws {
+    func approvalWhileOpenShowsPurchased() async throws {
         let fixture = try await makeModel()
         let model = fixture.model
         fixture.backend.nextPurchaseResult = .pending
@@ -165,18 +165,38 @@ struct ParentsModelTests {
         fixture.backend.entitled = true
         fixture.backend.sendTransactionUpdate()
         try #require(await waitUntil { model.status.hasPass })
-        #expect(model.visibleMessage == nil)
+        #expect(model.visibleMessage == .purchased)
         #expect(!model.status.showsPurchaseButton)
         model.passStore.stop()
     }
 
-    /// 権利が付いたあとは、承認待ち・うまくいかなかった文を出さず、うまくいった文は出す
+    /// 買ったあと、画面を開いたまま権利が外れたら（返金など）、購入できた文を隠して購入のボタンに戻す（PR #43 の申し送り）
+    @Test
+    func revocationWhileOpenHidesSuccess() async throws {
+        let fixture = try await makeModel()
+        let model = fixture.model
+        model.request(.purchase)
+        await model.runPendingAction()
+        try #require(model.visibleMessage == .purchased)
+        fixture.backend.entitled = false
+        fixture.backend.sendTransactionUpdate()
+        try #require(await waitUntil { !model.status.hasPass })
+        #expect(model.visibleMessage == nil)
+        #expect(model.status.showsPurchaseButton)
+        model.passStore.stop()
+    }
+
+    /// 権利が付いたら、承認待ちは購入できた文に変え、うまくいかなかった文は出さない。権利が外れたら、うまくいった文を出さない
     @Test
     func visibleMessageFollowsPass() {
         #expect(ParentsMessage.visible(.pending, hasPass: false) == .pending)
         #expect(ParentsMessage.visible(.purchaseFailed, hasPass: false) == .purchaseFailed)
-        #expect(ParentsMessage.visible(.pending, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.restoreNotFound, hasPass: false) == .restoreNotFound)
+        #expect(ParentsMessage.visible(.purchased, hasPass: false) == nil)
+        #expect(ParentsMessage.visible(.restored, hasPass: false) == nil)
+        #expect(ParentsMessage.visible(.pending, hasPass: true) == .purchased)
         #expect(ParentsMessage.visible(.restoreNotFound, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.busy, hasPass: true) == nil)
         #expect(ParentsMessage.visible(.purchased, hasPass: true) == .purchased)
         #expect(ParentsMessage.visible(.restored, hasPass: true) == .restored)
         #expect(ParentsMessage.visible(nil, hasPass: true) == nil)

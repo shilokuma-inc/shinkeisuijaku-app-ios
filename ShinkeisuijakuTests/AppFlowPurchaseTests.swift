@@ -241,6 +241,7 @@ struct AppFlowPurchaseTests {
         fixture.backend.entitled = true
         fixture.backend.sendTransactionUpdate()
         try #require(await waitUntil { flow.hasPass })
+        #expect(model.visibleMessage == .purchased)
         #expect(flow.path == [.parents])
         #expect(flow.session == nil)
         flow.passStore.stop()

@@ -74,12 +74,20 @@ enum ParentsMessage: Equatable, Sendable {
         }
     }
 
-    /// 権利の有無に合わせて出す文。権利が付いたあとは、権利が無いことを前提にした文（承認待ち・うまくいかなかった）を出さない
+    /// 権利の有無に合わせて出す文。
+    /// 権利が付いたら、承認待ちは購入できた文に変え（画面を開いたまま承認された）、うまくいかなかった文は出さない。
+    /// 権利が外れたら（返金・ほかの端末での変化）、うまくいった文（購入できた・復元できた）を出さない
     static func visible(_ message: ParentsMessage?, hasPass: Bool) -> ParentsMessage? {
-        guard let message, hasPass, message == .pending || message.isProblem else {
-            return message
+        guard let message else {
+            return nil
         }
-        return nil
+        if hasPass {
+            if message == .pending {
+                return .purchased
+            }
+            return message.isProblem ? nil : message
+        }
+        return message == .purchased || message == .restored ? nil : message
     }
 
     /// うまくいかなかったことを伝える文か（文の前に付ける印を変える。色だけに頼らず、言葉でも伝わる文にしている）
@@ -151,8 +159,8 @@ final class ParentsModel {
         self.onPurchased = onPurchased
     }
 
-    /// 画面に出す結果の文。パスの権利が付いたら、承認待ち・うまくいかなかった文は出さない
-    /// （画面を開いたまま承認された・ほかの端末で買われたときに、「購入済み」と食い違う文を残さない）
+    /// 画面に出す結果の文。画面を開いたまま権利が変わっても（承認された・ほかの端末で買われた・返金された）、
+    /// 「購入済み」かどうかと食い違う文を残さない（承認されたら購入できた文に変わり、画面がそれを読み上げる）
     var visibleMessage: ParentsMessage? {
         ParentsMessage.visible(message, hasPass: passStore.hasPass)
     }
