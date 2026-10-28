@@ -88,7 +88,16 @@ def parse_rotate(transform: str | None) -> tuple[float, float, float] | None:
 
 
 def tokenize_path(data: str) -> list[str]:
-    return re.findall(r"[MLQCAZmlqcaz]|-?\d*\.?\d+(?:e-?\d+)?", data)
+    """パスを命令の英字と数に分ける。英字はすべて拾い、対応していない命令は `path_lines` で止める"""
+    tokens = re.findall(r"[A-Za-z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|[^\s,]", data)
+    for token in tokens:
+        if not re.fullmatch(r"[A-Za-z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", token):
+            fail(f"パスに読めない文字があります: {token!r}（{data}）")
+    return tokens
+
+
+def is_command(token: str) -> bool:
+    return re.fullmatch(r"[A-Za-z]", token) is not None
 
 
 def arc_lines(
@@ -122,28 +131,36 @@ def path_lines(data: str, dx: float, dy: float) -> list[str]:
     index = 0
     command = ""
     current = (0.0, 0.0)
+    subpath_start = (0.0, 0.0)
 
     def take(count: int) -> list[float]:
         nonlocal index
+        if any(is_command(t) for t in tokens[index:index + count]):
+            fail(f"パスの数が足りません: {data}")
         values = [float(token) for token in tokens[index:index + count]]
-        if len(values) != count or any(re.fullmatch(r"[A-Za-z]", t) for t in tokens[index:index + count]):
+        if len(values) != count:
             fail(f"パスの数が足りません: {data}")
         index += count
         return values
 
     while index < len(tokens):
         token = tokens[index]
-        if re.fullmatch(r"[A-Za-z]", token):
+        if is_command(token):
             command = token
             index += 1
-            if command.islower():
-                fail(f"相対座標の命令には対応していません: {command}")
+            if command not in "MLQCAZ":
+                fail(f"対応していないパスの命令です: {command}（{data}）")
             if command == "Z":
                 lines.append("path.closeSubpath()")
+                # 閉じたら、現在の点はサブパスの始点に戻る（SVG の仕様）
+                current = subpath_start
                 continue
+        elif not command or command == "Z":
+            fail(f"パスが命令で始まっていません: {data}")
         if command == "M":
             x, y = take(2)
             current = (x + dx, y + dy)
+            subpath_start = current
             lines.append(f"path.move(to: {point(*current)})")
             command = "L"
         elif command == "L":
@@ -163,8 +180,8 @@ def path_lines(data: str, dx: float, dy: float) -> list[str]:
             )
         elif command == "A":
             rx, ry, rotation, large_arc, sweep, x, y = take(7)
-            if rx != ry or rotation != 0:
-                fail(f"楕円の円弧と回転した円弧には対応していません: {data}")
+            if rx <= 0 or rx != ry or rotation != 0:
+                fail(f"円の円弧（rx = ry > 0・回転なし）にだけ対応しています: {data}")
             end = (x + dx, y + dy)
             lines.extend(arc_lines(current, rx, bool(large_arc), bool(sweep), end))
             current = end
@@ -196,16 +213,36 @@ def element_path(element: ET.Element, dx: float, dy: float) -> list[str]:
     return []
 
 
+# 図形の要素ごとに読む属性。これ以外の属性（style・opacity・fill-rule など）があれば止める
+SHAPE_ATTRIBUTES = {
+    "path": {"d"},
+    "circle": {"cx", "cy", "r"},
+    "ellipse": {"cx", "cy", "rx", "ry"},
+}
+PAINT_ATTRIBUTES = {"fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "transform"}
+
+
 def part_lines(element: ET.Element, dx: float, dy: float) -> list[str]:
+    tag = element.tag.replace(SVG_NS, "")
+    if tag not in SHAPE_ATTRIBUTES:
+        fail(f"対応していない要素です: {tag}")
+    unknown = set(element.attrib) - SHAPE_ATTRIBUTES[tag] - PAINT_ATTRIBUTES
+    if unknown:
+        fail(f"{tag} の読まない属性があります: {sorted(unknown)}")
+    # SVG の既定値（fill は黒・stroke-width は 1・linejoin は miter）に頼らず、すべて書いてあることを求める
+    if "fill" not in element.attrib:
+        fail(f"{tag} に fill がありません（SVG の既定の黒には対応していません）")
     fill = color(element.get("fill"))
     stroke = color(element.get("stroke"))
-    width = float(element.get("stroke-width", "0")) if stroke else 0
-    cap = element.get("stroke-linecap", "butt")
-    if cap not in ("butt", "round"):
-        fail(f"対応していない線の端です: {cap}")
-    join = element.get("stroke-linejoin", "round")
-    if join != "round":
-        fail(f"丸以外の線のつなぎ目には対応していません: {join}")
+    width = 0.0
+    cap = "butt"
+    if stroke:
+        if "stroke-width" not in element.attrib or element.get("stroke-linejoin") != "round":
+            fail(f"線のある {tag} には stroke-width と stroke-linejoin=\"round\" が要ります")
+        width = float(element.get("stroke-width", "0"))
+        cap = element.get("stroke-linecap", "butt")
+        if cap not in ("butt", "round"):
+            fail(f"対応していない線の端です: {cap}")
     width_code = "Metrics.artOutlineWidth" if width == OUTLINE_WIDTH else number(width)
     path = element_path(element, dx, dy)
     lines = ["IllustrationPart(", f"    path: {path[0]}", *[f"    {line}" for line in path[1:]]]
@@ -258,6 +295,11 @@ def generate() -> dict[Path, str]:
     files: dict[Path, str] = {}
     for picture, name in PICTURES:
         group = groups[picture]
+        # 絵の <g> とその外側の <g> に付いた属性（継承する fill など）は読まないので、無いことを確かめる
+        if set(group.attrib) != {"id"}:
+            fail(f"<g id=\"{picture}\"> に id 以外の属性があります: {sorted(group.attrib)}")
+        if set(parents[group].attrib) - {"transform"}:
+            fail(f"<g id=\"{picture}\"> の外側の <g> に transform 以外の属性があります")
         # 1 つの図の枠の中の位置（`<g transform="translate(4 4)">`）。シートの並びの変形はその外側なので使わない
         dx, dy = parse_translate(parents[group].get("transform"))
         files[OUTPUT_DIR / f"Illustration+{picture}.swift"] = picture_source(picture, name, group, dx, dy)
