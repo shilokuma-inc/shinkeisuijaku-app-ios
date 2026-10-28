@@ -1,0 +1,38 @@
+{
+  "identifier" : "4C7D2A91-6B3E-4F58-9A1C-2E8B5D7F0A36",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "100",
+      "familyShareable" : false,
+      "internalID" : "6739100001",
+      "localizations" : [
+        {
+          "description" : "どうぶつ・ひらがなの ふつうと むずかしいが遊べ、パス専用のスタンプも集められる買い切りのパスです。",
+          "displayName" : "ぜんぶ遊べるパス",
+          "locale" : "ja"
+        }
+      ],
+      "productID" : "jp.shilokuma.Shinkeisuijaku.pass",
+      "referenceName" : "ぜんぶ遊べるパス",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja",
+    "_storefront" : "JPN",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

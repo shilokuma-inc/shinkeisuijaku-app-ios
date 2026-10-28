@@ -73,6 +73,9 @@
             ReferencedContainer = "container:Shinkeisuijaku.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <StoreKitConfigurationFileReference
+         identifier = "../../Configs/Shinkeisuijaku.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
