@@ -37,8 +37,10 @@ enum ScreenshotDemo {
         case parentalGate
         /// コース選択のダイアログ（ひらがな。パスの購入前で鍵が付いた状態）
         case courseSelect
-        /// スタンプちょう（通常を何個か・パス専用を 1 つ集めた状態）
+        /// スタンプちょう（パスを買った後。通常を 7 つ・パス専用を銀と金の 2 つ集めた状態）
         case stampBook
+        /// スタンプちょう（パスを買う前。通常を 7 つ集め、パス専用の枠に鍵が付いた状態）。App Store には出さない（見比べる用）
+        case stampBookBeforePass
         /// おうちの方への画面（保護者の確認のあと。購入前）。App Store には出さない
         case parents
     }
