@@ -16,7 +16,11 @@
     "6.3 inch の元になるので必ず撮る（反映するかは任意。display_types で外せる）。"
   ],
   "scenes": [
-    { "file": "01_home", "scene": "home" }
+    { "file": "01_home", "scene": "home" },
+    { "file": "02_play", "scene": "play" },
+    { "file": "03_clear", "scene": "clear" },
+    { "file": "04_stamp_book", "scene": "stampBook" },
+    { "file": "05_course_select", "scene": "courseSelect" }
   ],
   "displayTypes": {
     "APP_IPHONE_61": {
