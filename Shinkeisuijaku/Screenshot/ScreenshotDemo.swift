@@ -18,6 +18,10 @@ enum ScreenshotDemo {
     /// 撮る画面。rawValue が AppStore/screenshots.json の scene と対応する
     enum Scene: String {
         case home
+        /// デザイントークンの見本（色）。App Store には出さない
+        case designTokenColors
+        /// デザイントークンの見本（文字・寸法・動き）。App Store には出さない
+        case designTokenTypes
     }
 
     /// 撮影モードで起動しているか

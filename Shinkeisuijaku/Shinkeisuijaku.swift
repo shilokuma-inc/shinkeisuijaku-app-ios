@@ -20,6 +20,10 @@ struct Shinkeisuijaku: App {
         switch ScreenshotDemo.scene {
         case .home, nil:
             ContentView()
+        case .designTokenColors:
+            DesignTokenCatalogView(page: .colors)
+        case .designTokenTypes:
+            DesignTokenCatalogView(page: .typeAndMetrics)
         }
     }
 }
