@@ -26,13 +26,23 @@ struct SystemGameClock: GameClock {
 /// ゲームの秒数。値はデザイントークン（引き継ぎブックの「動き」）から作り、UI テストでは短くする
 struct GameTiming: Sendable {
     /// 始めに全部見せる時間（ペアの数・初回クリア前か から決める）
-    let revealAll: @Sendable (_ pairCount: Int, _ isBeforeFirstClear: Bool) -> TimeInterval
+    let revealAll: @MainActor @Sendable (_ pairCount: Int, _ isBeforeFirstClear: Bool) -> TimeInterval
     /// ハズレの 2 枚が裏に戻るまでの時間
     let mismatchDelay: TimeInterval
     /// ヒントで全部見せる時間
     let hintDuration: TimeInterval
     /// 全部揃ってから、クリアのダイアログを出すまでの間
     let clearDialogDelay: TimeInterval
+
+    /// 引き継ぎブックの「動き」の秒数（デザイントークンの `Motion`）
+    static let standard = GameTiming(
+        revealAll: { pairCount, isBeforeFirstClear in
+            Motion.revealAllDuration(pairCount: pairCount, isBeforeFirstClear: isBeforeFirstClear)
+        },
+        mismatchDelay: Motion.mismatchDelay,
+        hintDuration: Motion.hintDuration,
+        clearDialogDelay: Motion.clearDialogDelay
+    )
 }
 
 /// 1 回のゲーム

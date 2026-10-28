@@ -83,6 +83,19 @@ struct GameSessionTests {
         Dictionary(grouping: session.board.cards, by: \.pairID).values.sorted { $0[0].pairID < $1[0].pairID }
     }
 
+    /// アプリで使う秒数は、引き継ぎブックの「動き」の値
+    @Test
+    func standardTimingUsesHandoffBookValues() {
+        let standard = GameTiming.standard
+        #expect(standard.revealAll(6, false) == 2.6)
+        #expect(standard.revealAll(8, false) == 3.0)
+        #expect(standard.revealAll(10, false) == 3.4)
+        #expect(standard.revealAll(6, true) == 4.8)
+        #expect(standard.mismatchDelay == 0.9)
+        #expect(standard.hintDuration == 1.1)
+        #expect(standard.clearDialogDelay == 1.1)
+    }
+
     // MARK: - 始めに全部見せる
 
     /// 始めに全部のカードを見せ、そのあいだは押せない。時間がたつとめくれるようになる
