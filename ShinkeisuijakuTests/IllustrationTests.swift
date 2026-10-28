@@ -81,15 +81,32 @@ struct IllustrationTests {
         #expect(abs(rind.maxX - 98) < 0.001)
     }
 
-    /// ヒントの目は 2 つの目（白目・黒目・光・眉）で、横長の枠に収まり、絵と同じ輪郭線を使う
+    /// ヒントの目は 2 つの目（白目・黒目・光・眉）で、線の太さを含めて横長の枠に収まる
     @Test
     func hintEyesFitTheirCanvas() {
         let parts = IllustrationArt.hintEyes
         #expect(parts.count == 8)
         let canvas = CGRect(origin: .zero, size: IllustrationArt.hintEyesCanvasSize)
         for part in parts {
-            #expect(canvas.contains(part.path.boundingRect), "目の部品が枠の外に出ている: \(part.path.boundingRect)")
+            let painted = part.path.boundingRect.insetBy(dx: -part.lineWidth / 2, dy: -part.lineWidth / 2)
+            #expect(canvas.contains(painted), "目の部品が枠の外に出ている: \(painted)")
         }
-        #expect(parts.filter { $0.lineWidth == Metrics.artOutlineWidth }.count == 4)
+    }
+
+    /// ヒントの目の白目と眉は、ダークの面でも見える線の色。黒目の輪郭線は絵と同じ
+    @Test
+    func hintEyesUseLinesVisibleOnSurface() {
+        let parts = IllustrationArt.hintEyes
+        #expect(parts.filter { $0.stroke == Palette.artLineOnSurface }.count == 4)
+        #expect(parts.filter { $0.stroke == Palette.artOutline && $0.lineWidth == Metrics.artOutlineWidth }.count == 2)
+    }
+
+    /// 横長の枠の部品を描くときは、縦横比を保って真ん中に寄せる
+    @Test
+    func partsFitIsCenteredAndKeepsAspect() {
+        let fit = IllustrationPartsView.fit(canvasSize: CGSize(width: 108, height: 54), into: CGSize(width: 100, height: 100))
+        #expect(abs(fit.scale - 100.0 / 108.0) < 0.0001)
+        #expect(abs(fit.offset.x) < 0.0001)
+        #expect(abs(fit.offset.y - (100 - 54 * 100.0 / 108.0) / 2) < 0.0001)
     }
 }
