@@ -25,8 +25,16 @@ enum Metrics {
     static let cardCornerRadius: CGFloat = 10
     /// カードの影の下へのずれ（色は `Palette.cardShadow`）
     static let cardShadowOffsetY: CGFloat = 2
+    /// カードの影のぼかし（引き継ぎブックは「下へ 2」だけなので、ぼかさない）
+    static let cardShadowRadius: CGFloat = 0
     /// カードの裏の水玉の間隔（色は `Palette.cardBackDot`）
     static let cardBackDotSpacing: CGFloat = 18
+    /// カードの裏の水玉の直径（引き継ぎブックに無いので、間隔の 3 分の 1 にした）
+    static let cardBackDotDiameter: CGFloat = 6
+    /// 表のカードの絵の大きさ（カードの短辺に対する割合）
+    static let cardPictureRatio: CGFloat = 0.62
+    /// ペアが揃って言葉が現れたときの絵の大きさ（カードの短辺に対する割合。下に言葉を置く分だけ小さくする）
+    static let cardMatchedPictureRatio: CGFloat = 0.5
 
     // ボタン
     /// 大きな「あそぶ」の高さ

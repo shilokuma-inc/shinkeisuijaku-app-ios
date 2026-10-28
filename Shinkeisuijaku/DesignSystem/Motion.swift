@@ -19,6 +19,8 @@ enum Motion {
     static let matchDelay: TimeInterval = 0.35
     /// ペアが揃ったときにふくらむ倍率
     static let matchScale: CGFloat = 1.06
+    /// ふくらむ時間と、元の大きさに戻る時間（それぞれ。引き継ぎブックに無いので、めくりより短くした）
+    static let matchPulseDuration: TimeInterval = 0.18
     /// ハズレの 2 枚が裏に戻るまでの時間（× 表示や音は出さない）
     static let mismatchDelay: TimeInterval = 0.9
 
