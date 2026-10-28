@@ -22,6 +22,8 @@ enum ScreenshotDemo {
         case designTokenColors
         /// デザイントークンの見本（文字・寸法・動き）。App Store には出さない
         case designTokenTypes
+        /// 13 種類の絵の見本。App Store には出さない
+        case illustrations
     }
 
     /// 撮影モードで起動しているか
