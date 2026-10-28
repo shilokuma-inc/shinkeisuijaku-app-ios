@@ -123,9 +123,10 @@ extension View {
     }
 }
 
-/// コース選択のダイアログを重ねる。出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする
+/// コース選択のダイアログを重ねる。出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする（「視差効果を減らす」ではすぐ切り替える）
 private struct CourseSelectDialogModifier: ViewModifier {
     let flow: AppFlow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -141,7 +142,7 @@ private struct CourseSelectDialogModifier: ViewModifier {
                     .transition(.opacity)
                 }
             }
-            .animation(.easeOut(duration: Motion.dialogFadeDuration), value: flow.courseSelection)
+            .animation(MotionPolicy(reduceMotion: reduceMotion).dialogAnimation, value: flow.courseSelection)
     }
 }
 

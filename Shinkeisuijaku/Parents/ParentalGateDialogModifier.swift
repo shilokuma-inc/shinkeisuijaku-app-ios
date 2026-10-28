@@ -16,9 +16,10 @@ extension View {
 }
 
 /// 保護者の確認のダイアログを重ねる。出すたびに、画面の流れの乱数から問題を作り直す（UI テストでは種を固定しているので、毎回同じ問題から始まる）。
-/// 出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする
+/// 出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする（「視差効果を減らす」ではすぐ切り替える。`MotionPolicy`）
 private struct ParentalGateDialogModifier: ViewModifier {
     let flow: AppFlow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -32,6 +33,6 @@ private struct ParentalGateDialogModifier: ViewModifier {
                         .transition(.opacity)
                 }
             }
-            .animation(.easeOut(duration: Motion.dialogFadeDuration), value: flow.isShowingParentalGate)
+            .animation(MotionPolicy(reduceMotion: reduceMotion).dialogAnimation, value: flow.isShowingParentalGate)
     }
 }

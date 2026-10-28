@@ -148,7 +148,7 @@ final class ClearRecorder {
     }
 }
 
-/// プレイ画面とクリアのダイアログ。クリアになったら記録してもらい（スタンプ・保存・振動）、ダイアログを出す
+/// プレイ画面とクリアのダイアログ。クリアになったら記録してもらい（スタンプ・保存・振動）、ダイアログを出す（薄く出す。「視差効果を減らす」ではすぐ出す。スタンプのかたむきは止まった形なのでそのまま）
 struct GameScreen: View {
     let session: GameSession
     /// パスの権利があるか（次の難易度の鍵・おうちの方への案内に使う）
@@ -162,6 +162,7 @@ struct GameScreen: View {
     let onClearAction: (ClearAction) -> Void
 
     @State private var outcome: ClearOutcome?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         PlayView(session: session, haptics: haptics, onQuit: onQuit) {
@@ -173,7 +174,7 @@ struct GameScreen: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: Motion.dialogFadeDuration), value: outcome)
+        .animation(MotionPolicy(reduceMotion: reduceMotion).dialogAnimation, value: outcome)
         // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じる（記録は呼び出し側がゲームごとにやり直す）
         .onChange(of: ObjectIdentifier(session)) {
             outcome = nil
