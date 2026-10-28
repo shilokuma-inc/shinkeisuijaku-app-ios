@@ -153,6 +153,35 @@ struct ParentsModelTests {
         model.passStore.stop()
     }
 
+    /// 承認待ちのあと、画面を開いたまま承認されたら、承認待ちの文を消して購入済みの表示にする
+    @Test
+    func approvalWhileOpenHidesPendingMessage() async throws {
+        let fixture = try await makeModel()
+        let model = fixture.model
+        fixture.backend.nextPurchaseResult = .pending
+        model.request(.purchase)
+        await model.runPendingAction()
+        #expect(model.visibleMessage == .pending)
+        fixture.backend.entitled = true
+        fixture.backend.sendTransactionUpdate()
+        try #require(await waitUntil { model.status.hasPass })
+        #expect(model.visibleMessage == nil)
+        #expect(!model.status.showsPurchaseButton)
+        model.passStore.stop()
+    }
+
+    /// 権利が付いたあとは、承認待ち・うまくいかなかった文を出さず、うまくいった文は出す
+    @Test
+    func visibleMessageFollowsPass() {
+        #expect(ParentsMessage.visible(.pending, hasPass: false) == .pending)
+        #expect(ParentsMessage.visible(.purchaseFailed, hasPass: false) == .purchaseFailed)
+        #expect(ParentsMessage.visible(.pending, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.restoreNotFound, hasPass: true) == nil)
+        #expect(ParentsMessage.visible(.purchased, hasPass: true) == .purchased)
+        #expect(ParentsMessage.visible(.restored, hasPass: true) == .restored)
+        #expect(ParentsMessage.visible(nil, hasPass: true) == nil)
+    }
+
     /// キャンセルしたら、前の結果の文も消す
     @Test
     func cancelClearsPreviousMessage() async throws {

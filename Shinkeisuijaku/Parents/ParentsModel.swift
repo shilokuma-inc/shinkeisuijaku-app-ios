@@ -74,6 +74,14 @@ enum ParentsMessage: Equatable, Sendable {
         }
     }
 
+    /// 権利の有無に合わせて出す文。権利が付いたあとは、権利が無いことを前提にした文（承認待ち・うまくいかなかった）を出さない
+    static func visible(_ message: ParentsMessage?, hasPass: Bool) -> ParentsMessage? {
+        guard let message, hasPass, message == .pending || message.isProblem else {
+            return message
+        }
+        return nil
+    }
+
     /// うまくいかなかったことを伝える文か（文の前に付ける印を変える。色だけに頼らず、言葉でも伝わる文にしている）
     var isProblem: Bool {
         switch self {
@@ -138,6 +146,12 @@ final class ParentsModel {
 
     init(passStore: PassStore) {
         self.passStore = passStore
+    }
+
+    /// 画面に出す結果の文。パスの権利が付いたら、承認待ち・うまくいかなかった文は出さない
+    /// （画面を開いたまま承認された・ほかの端末で買われたときに、「購入済み」と食い違う文を残さない）
+    var visibleMessage: ParentsMessage? {
+        ParentsMessage.visible(message, hasPass: passStore.hasPass)
     }
 
     /// パスの欄に出すもの
