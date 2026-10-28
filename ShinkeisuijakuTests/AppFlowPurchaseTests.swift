@@ -6,6 +6,7 @@
 //  鍵の付いた難易度 → おうちの方へ → 保護者の確認 → おうちの方への画面 → 購入 → 押した難易度のゲーム、と、
 //  確認をやめたとき・買わずに戻ったとき・クリアから来たとき・購入と返金で鍵が消えて戻ること。
 //  `AppFlowTests` に入れると SwiftLint の file_length（500 行）を超えるので、ファイルを分けている。
+//  何もしないとき・途中で変わったときのテストは `AppFlowPurchaseGuardTests.swift`（この Suite の extension。type_body_length のため）。
 //
 
 import Foundation
@@ -16,7 +17,7 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct AppFlowPurchaseTests {
     /// テストで使う画面の流れと、その後ろの擬似のストア・保存
-    private struct Fixture {
+    struct Fixture {
         let flow: AppFlow
         let backend: FakePassStoreBackend
         let store: InMemoryAppDataStore
@@ -37,7 +38,7 @@ struct AppFlowPurchaseTests {
     }
 
     /// 1 回クリアした後（ホームから始まる）・パスの購入前で作る
-    private func makeFixture(data: AppData = AppData(hasClearedOnce: true), entitled: Bool = false) -> Fixture {
+    func makeFixture(data: AppData = AppData(hasClearedOnce: true), entitled: Bool = false) -> Fixture {
         let backend = FakePassStoreBackend(entitled: entitled)
         let store = InMemoryAppDataStore(data: data)
         let flow = AppFlow(
@@ -51,7 +52,7 @@ struct AppFlowPurchaseTests {
     }
 
     /// 擬似のストアの処理が画面の値に届くまで、ほかの処理に順番を譲って待つ（時間では待たない）。条件が成り立ったかを返す
-    private func waitUntil(_ condition: () -> Bool) async -> Bool {
+    func waitUntil(_ condition: () -> Bool) async -> Bool {
         for _ in 0..<1_000 {
             if condition() {
                 return true
@@ -62,7 +63,7 @@ struct AppFlowPurchaseTests {
     }
 
     /// コース選択で鍵の付いた難易度を押し、案内の「おうちの方へ」で保護者の確認を出す
-    private func openGateFromCourse(_ flow: AppFlow, course: Course, difficulty: Difficulty) throws {
+    func openGateFromCourse(_ flow: AppFlow, course: Course, difficulty: Difficulty) throws {
         flow.chooseCourse(course)
         try #require(flow.selectDifficulty(difficulty) == .showLockedGuide)
         flow.openParentsForLockedCourse()
