@@ -45,7 +45,8 @@ struct GameTiming: Sendable {
     )
 }
 
-/// 1 回のゲーム
+/// 1 回のゲーム。待つ処理（全部見せる・ハズレを戻す・ヒント・クリアまでの間）はセッションが自分の Task で進め、
+/// `quit()` でまとめて止める。画面はボタンを押したときに同期のメソッドを呼び、`phase` と `board` の変化を見る
 @Observable
 final class GameSession {
     /// ゲームの段階
@@ -64,6 +65,8 @@ final class GameSession {
         case finishing
         /// クリア（ダイアログを出す）
         case cleared
+        /// 「やめる」で止めた。これより先には進まない（クリアにもならない）
+        case quit
     }
 
     let course: Course
@@ -75,19 +78,23 @@ final class GameSession {
 
     @ObservationIgnored private let timing: GameTiming
     @ObservationIgnored private let clock: any GameClock
+    /// 待っている処理。同時に 1 つだけ（待っているあいだは `phase` が `.playing` でないので、次の操作は入らない）
+    @ObservationIgnored private var pendingTask: Task<Void, Never>?
 
+    /// コースと難易度のカードを配って、ゲームを用意する
+    /// - Parameter generator: カードを配る乱数。テストと UI テストでは種を固定したものを渡す
     init(
         course: Course,
         difficulty: Difficulty,
         isBeforeFirstClear: Bool,
-        board: GameBoard,
         timing: GameTiming,
-        clock: any GameClock = SystemGameClock()
+        clock: any GameClock = SystemGameClock(),
+        using generator: inout some RandomNumberGenerator
     ) {
         self.course = course
         self.difficulty = difficulty
         self.isBeforeFirstClear = isBeforeFirstClear
-        self.board = board
+        board = GameDealer.deal(course: course, difficulty: difficulty, using: &generator)
         self.timing = timing
         self.clock = clock
     }
@@ -112,23 +119,21 @@ final class GameSession {
         card.isFaceUp || phase == .revealingAll || phase == .hinting
     }
 
-    /// 始めに全部のカードを見せてから、めくれるようにする
-    func start() async {
+    /// 始めに全部のカードを見せ、時間がたったらめくれるようにする
+    func start() {
         guard phase == .ready else {
             return
         }
         phase = .revealingAll
-        await clock.sleep(for: timing.revealAll(board.cards.count / 2, isBeforeFirstClear))
-        guard !Task.isCancelled, phase == .revealingAll else {
-            return
+        wait(for: timing.revealAll(difficulty.pairCount, isBeforeFirstClear)) { session in
+            session.phase = .playing
         }
-        phase = .playing
     }
 
-    /// カードを 1 枚めくる。ハズレなら裏に戻るまで、全部揃ったらクリアまで待ってから戻る
-    /// - Returns: めくった結果（揃ったときの振動などに使う）
+    /// カードを 1 枚めくる。結果はすぐに返し（揃ったときの振動に使う）、ハズレを戻す・クリアにするのは後で進める
+    /// - Returns: めくった結果
     @discardableResult
-    func flip(cardID: Card.ID) async -> FlipResult {
+    func flip(cardID: Card.ID) -> FlipResult {
         guard phase == .playing else {
             return .ignored
         }
@@ -138,39 +143,54 @@ final class GameSession {
             break
         case .matched:
             if board.isCleared {
-                await finish()
+                phase = .finishing
+                wait(for: timing.clearDialogDelay) { session in
+                    session.phase = .cleared
+                }
             }
         case .mismatched:
             phase = .resolvingMismatch
-            await clock.sleep(for: timing.mismatchDelay)
-            board.concealMismatch()
-            if !Task.isCancelled, phase == .resolvingMismatch {
-                phase = .playing
+            wait(for: timing.mismatchDelay) { session in
+                session.board.concealMismatch()
+                session.phase = .playing
             }
         }
         return result
     }
 
     /// ヒント: 裏のカードを全部、少しのあいだだけ見せる（回数の制限はなし）
-    func showHint() async {
+    func showHint() {
         guard canShowHint else {
             return
         }
         phase = .hinting
-        await clock.sleep(for: timing.hintDuration)
-        guard !Task.isCancelled, phase == .hinting else {
-            return
+        wait(for: timing.hintDuration) { session in
+            session.phase = .playing
         }
-        phase = .playing
     }
 
-    /// 全部揃ってから少し待って、クリアにする
-    private func finish() async {
-        phase = .finishing
-        await clock.sleep(for: timing.clearDialogDelay)
-        guard !Task.isCancelled else {
-            return
+    /// 「やめる」: 待っている処理を止め、これより先に進めない（揃えた直後にやめても、クリアにしない）
+    func quit() {
+        pendingTask?.cancel()
+        pendingTask = nil
+        phase = .quit
+    }
+
+    /// 待っている処理が終わるまで待つ（テストで、時計を進めた後の状態を確かめるため）
+    func waitForPendingWork() async {
+        await pendingTask?.value
+    }
+
+    /// 少し待ってから次の段階に進める。`quit()` で止めたら進めない
+    private func wait(for seconds: TimeInterval, then advance: @escaping (GameSession) -> Void) {
+        let clock = clock
+        pendingTask = Task { [weak self] in
+            await clock.sleep(for: seconds)
+            guard !Task.isCancelled, let self, self.phase != .quit else {
+                return
+            }
+            self.pendingTask = nil
+            advance(self)
         }
-        phase = .cleared
     }
 }
