@@ -1,0 +1,126 @@
+//
+//  AppFlowTests.swift
+//  ShinkeisuijakuTests
+//
+//  画面の流れ（起動したときに積む画面・あそぶ・やめる・クリアのあとの行き先）を、メモリ上の保存と擬似のストアで確かめる。
+//
+
+import Foundation
+@testable import Shinkeisuijaku
+import Testing
+
+struct AppFlowTests {
+    private func makeFlow(data: AppData = .initial, entitled: Bool = false) -> (flow: AppFlow, store: InMemoryAppDataStore) {
+        let store = InMemoryAppDataStore(data: data)
+        let passStore = PassStore(backend: FakePassStoreBackend(entitled: entitled), dataStore: store)
+        let flow = AppFlow(
+            store: store,
+            passStore: passStore,
+            haptics: SilentHaptics(),
+            clock: InstantGameClock(),
+            generator: SeededRandomNumberGenerator(seed: 7)
+        )
+        return (flow, store)
+    }
+
+    /// 初めて起動したときは、プレイを積んだ状態（どうぶつ・やさしい・初回クリア前）で始まる
+    @Test
+    func firstLaunchStartsWithGame() throws {
+        let flow = makeFlow().flow
+        #expect(flow.path == [.game])
+        let session = try #require(flow.session)
+        #expect(session.course == .animals)
+        #expect(session.difficulty == .easy)
+        #expect(session.isBeforeFirstClear)
+    }
+
+    /// 1 回クリアした後に起動したときは、ホームから始まる（ゲームを用意しない）
+    @Test
+    func launchAfterFirstClearShowsHome() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        #expect(flow.path.isEmpty)
+        #expect(flow.session == nil)
+    }
+
+    /// 初回クリア前に起動してすぐのゲームでも、「やめる」でホームに戻る
+    @Test
+    func quitFromFirstGameGoesHome() {
+        let flow = makeFlow().flow
+        flow.goHome()
+        #expect(flow.path.isEmpty)
+    }
+
+    /// 「あそぶ」は前回のコースと難易度で始める（初回クリア後なので全部見せる時間は短い方）
+    @Test
+    func playStartsLastChoice() throws {
+        // パスの権利は StoreKit で確かめるまで端末内のキャッシュなので、キャッシュも持たせる
+        let data = AppData(hasPassCache: true, lastCourse: .hiragana, lastDifficulty: .hard, hasClearedOnce: true)
+        let flow = makeFlow(data: data, entitled: true).flow
+        flow.play()
+        #expect(flow.path == [.game])
+        let session = try #require(flow.session)
+        #expect(session.course == .hiragana)
+        #expect(session.difficulty == .hard)
+        #expect(!session.isBeforeFirstClear)
+    }
+
+    /// パスの権利が無いとき、前回の難易度に鍵が付いていれば そのコースのやさしいで始め、前回として保存する
+    @Test
+    func playFallsBackToEasyWhenLocked() throws {
+        let data = AppData(lastCourse: .hiragana, lastDifficulty: .normal, hasClearedOnce: true)
+        let (flow, store) = makeFlow(data: data)
+        #expect(flow.resumeChoice == GameChoice(course: .hiragana, difficulty: .easy))
+        flow.play()
+        let session = try #require(flow.session)
+        #expect(session.difficulty == .easy)
+        #expect(store.data.lastCourse == .hiragana)
+        #expect(store.data.lastDifficulty == .easy)
+    }
+
+    /// ゲームを始めると、コースと難易度を前回のものとして保存する（ほかの項目は変えない）
+    @Test
+    func startGameSavesLastChoice() {
+        let data = AppData(ownedStampIDs: ["cat"], hasPassCache: true, hasClearedOnce: true)
+        let (flow, store) = makeFlow(data: data, entitled: true)
+        flow.startGame(GameChoice(course: .hiragana, difficulty: .normal))
+        #expect(store.data.lastCourse == .hiragana)
+        #expect(store.data.lastDifficulty == .normal)
+        #expect(store.data.ownedStampIDs == ["cat"])
+        #expect(store.data.hasPassCache)
+        #expect(store.data.hasClearedOnce)
+    }
+
+    /// 「もう一回あそぶ」は同じコースと難易度の新しいゲームにする
+    @Test
+    func playAgainStartsNewGame() throws {
+        let flow = makeFlow().flow
+        let first = try #require(flow.session)
+        flow.handle(.playAgain)
+        let second = try #require(flow.session)
+        #expect(first !== second)
+        #expect(second.course == first.course)
+        #expect(second.difficulty == first.difficulty)
+        #expect(flow.path == [.game])
+    }
+
+    /// 次の難易度は、同じコースの次の難易度の新しいゲームにする
+    @Test
+    func nextDifficultyStartsThatGame() throws {
+        let data = AppData(lastCourse: .hiragana, hasClearedOnce: true)
+        let flow = makeFlow(data: data, entitled: true).flow
+        flow.play()
+        flow.handle(.nextDifficulty(.normal))
+        let session = try #require(flow.session)
+        #expect(session.course == .hiragana)
+        #expect(session.difficulty == .normal)
+        #expect(flow.path == [.game])
+    }
+
+    /// クリアの「ホームにもどる」でホームに戻る
+    @Test
+    func homeActionGoesHome() {
+        let flow = makeFlow().flow
+        flow.handle(.home)
+        #expect(flow.path.isEmpty)
+    }
+}
