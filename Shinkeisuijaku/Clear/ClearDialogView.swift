@@ -189,19 +189,20 @@ struct GameScreen: View {
     }
 }
 
-/// 撮影モードのクリアのダイアログ。プレイ画面（ひらがな）の上に、通常のスタンプを 1 つもらった ひらがな・やさしい のクリアを出す（種を固定。保存しない）
+/// 撮影モードのクリアのダイアログ。全部揃えたプレイ画面（どうぶつ・やさしい）の上に、通常のスタンプを 1 つもらったクリアを出す
+/// （パスの購入前。種を固定。保存しない）。プレイの撮影（ひらがな）と違うコースにして、2 つのコースを両方見せる
 struct ClearScreenshotDemoView: View {
     var body: some View {
         var generator = SeededRandomNumberGenerator(seed: 1)
         let outcome = ClearOutcome.make(
-            course: .hiragana,
+            course: .animals,
             difficulty: .easy,
             data: AppData(ownedStampIDs: Stamp.regularStamps.filter { $0 != .regular(.fox) }.prefix(4).map(\.id)),
             hasPass: false,
             using: &generator
         )
         return ZStack {
-            PlayScreenshotDemoView()
+            PlayScreenshotDemoView(course: .animals, matchedPairCount: nil, flipsNextCard: false)
             ClearDialogView(outcome: outcome, hasPass: false)
         }
     }

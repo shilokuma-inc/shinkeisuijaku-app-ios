@@ -126,14 +126,19 @@ struct StampBookView: View {
     }
 }
 
-/// 撮影モードのスタンプちょう。通常を 5 つとパス専用（どうぶつ・ふつう）を 1 つ集めた、パスを買った後の状態で開く（保存は使わない）
+/// 撮影モードのスタンプちょう。通常を 7 つと、パス専用を 2 つ（どうぶつ・ふつうの銀、ひらがな・むずかしいの金）集めた状態で開く（保存は使わない）。
+/// App Store に出すのはパスを買った後（銀と金のふちを両方見せる）。`hasPass` が false なら、同じ通常のスタンプで、まだのパス専用の枠に鍵を出す（見比べる用）
 struct StampBookScreenshotDemoView: View {
-    private static let owned: [Stamp] = [
-        .regular(.cat), .regular(.rabbit), .regular(.panda), .regular(.chick), .regular(.apple), .pass(.animals, .silver)
+    private static let regular: [Stamp] = [
+        .regular(.cat), .regular(.rabbit), .regular(.panda), .regular(.frog), .regular(.chick), .regular(.apple), .regular(.strawberry)
     ]
+    private static let pass: [Stamp] = [.pass(.animals, .silver), .pass(.hiragana, .gold)]
+
+    var hasPass = true
 
     var body: some View {
-        StampBookView(layout: StampBookLayout(owned: StampCollection(ids: Self.owned.map(\.id)), hasPass: true))
+        let owned = hasPass ? Self.regular + Self.pass : Self.regular
+        StampBookView(layout: StampBookLayout(owned: StampCollection(ids: owned.map(\.id)), hasPass: hasPass))
     }
 }
 
@@ -142,5 +147,5 @@ struct StampBookScreenshotDemoView: View {
 }
 
 #Preview("パスを買う前") {
-    StampBookView(layout: StampBookLayout(owned: StampCollection(ids: [Stamp.regular(.dog).id]), hasPass: false))
+    StampBookScreenshotDemoView(hasPass: false)
 }

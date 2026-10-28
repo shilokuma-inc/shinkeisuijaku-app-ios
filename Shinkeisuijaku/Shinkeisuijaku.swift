@@ -52,6 +52,8 @@ struct Shinkeisuijaku: App {
             CourseSelectScreenshotDemoView()
         case .stampBook:
             StampBookScreenshotDemoView()
+        case .stampBookBeforePass:
+            StampBookScreenshotDemoView(hasPass: false)
         case .parents:
             ParentsScreenshotDemoView()
         }
