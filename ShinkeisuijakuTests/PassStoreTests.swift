@@ -151,4 +151,92 @@ struct PassStoreTests {
         #expect(PassStoreFactory.makeBackend(arguments: ["-screenshot-demo"], environment: [:]) is FakePassStoreBackend)
         #expect(PassStoreFactory.makeBackend(arguments: [], environment: [:]) is StoreKitPassBackend)
     }
+
+    /// 購入より前に読み始めた権利の確認が後から終わっても、購入の結果を古い値で上書きしない
+    @Test
+    func staleEntitlementCheckDoesNotUndoPurchase() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        await store.start()
+        backend.holdsEntitlementChecks = true
+        let refreshing = Task { await store.refreshEntitlement() }
+        await waitUntil { backend.heldEntitlementChecks == 1 }
+        #expect(await store.purchase() == .purchased)
+        #expect(store.hasPass)
+        backend.releaseEntitlementChecks()
+        await refreshing.value
+        #expect(store.hasPass, "古い確認の結果（権利なし）で鍵を戻さない")
+        #expect(fixture.data.data.hasPassCache)
+        store.stop()
+    }
+
+    /// あとから読み始めた確認（承認待ちが承認された など）が先に終わったら、前に読み始めた古い確認の結果で戻さない
+    @Test
+    func olderEntitlementCheckFinishingLastIsIgnored() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        await store.start()
+        backend.holdsEntitlementChecks = true
+        let older = Task { await store.refreshEntitlement() }
+        await waitUntil { backend.heldEntitlementChecks == 1 }
+        backend.entitled = true
+        let newer = Task { await store.refreshEntitlement() }
+        await waitUntil { backend.heldEntitlementChecks == 2 }
+        backend.releaseLatestEntitlementCheck()
+        await newer.value
+        #expect(store.hasPass)
+        backend.releaseEntitlementChecks()
+        await older.value
+        #expect(store.hasPass, "前に読み始めた確認（権利なし）で鍵を戻さない")
+        #expect(fixture.data.data.hasPassCache)
+        store.stop()
+    }
+
+    /// 購入の途中にもう一度押しても、何もせずに busy を返す（復元も同じ）
+    @Test
+    func secondTapWhileBusyIsIgnored() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        backend.holdsPurchase = true
+        let purchasing = Task { await store.purchase() }
+        await waitUntil { store.isBusy }
+        #expect(await store.purchase() == .busy)
+        #expect(await store.restore() == .busy)
+        backend.releasePurchase()
+        #expect(await purchasing.value == .purchased)
+        #expect(!store.isBusy)
+    }
+
+    /// 購読を止めた後は、取引の変化が届いても権利を変えない
+    @Test
+    func stopEndsTransactionUpdates() async {
+        let fixture = makeStore(entitled: true, cache: true)
+        let store = fixture.store
+        let backend = fixture.backend
+        await store.start()
+        store.stop()
+        backend.entitled = false
+        backend.sendTransactionUpdate()
+        for _ in 0..<100 {
+            await Task.yield()
+        }
+        #expect(store.hasPass)
+    }
+
+    /// 起動時に値段を読めなかったら、権利を確かめ直すときに読み直す
+    @Test
+    func priceIsReloadedWhenMissing() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        fixture.backend.displayPrice = nil
+        await store.start()
+        #expect(store.displayPrice == nil)
+        fixture.backend.displayPrice = "¥100"
+        await store.refreshEntitlement()
+        #expect(store.displayPrice == "¥100")
+        store.stop()
+    }
 }
