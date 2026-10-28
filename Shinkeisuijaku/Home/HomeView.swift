@@ -184,7 +184,14 @@ struct PlayButton: View {
             .frame(maxWidth: .infinity, minHeight: Metrics.playButtonHeight)
         }
         .buttonStyle(PlayButtonStyle())
+        // 「・」を読ませず、「あそぶ ひらがな やさしい」と始めるゲームまで 1 つに読む
+        .accessibilityLabel(Text(verbatim: Self.accessibilityLabel(for: choice)))
         .accessibilityIdentifier("home.play")
+    }
+
+    /// 読み上げ（「あそぶ ひらがな やさしい」）
+    static func accessibilityLabel(for choice: GameChoice) -> String {
+        String(localized: "あそぶ \(choice.course.name) \(choice.difficulty.name)")
     }
 }
 

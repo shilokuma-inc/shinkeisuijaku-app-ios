@@ -2,7 +2,7 @@
 //  TextSizeLayoutTests.swift
 //  ShinkeisuijakuTests
 //
-//  文字の大きさに合わせた並べ方（アクセシビリティの大きな文字では縦に積む）を確かめる。
+//  文字の大きさに合わせた並べ方（アクセシビリティの大きな文字では縦に積む）と、ホームの「あそぶ」の読み上げを確かめる。
 //
 
 import Foundation
@@ -20,4 +20,9 @@ struct TextSizeLayoutTests {
         #expect(accessibility.allSatisfy { TextSizeLayout.stacksVertically($0) })
     }
 
+    /// ホームの「あそぶ」は、始めるコースと難易度まで「・」を読ませずに 1 つに読む
+    @Test
+    func playButtonReadsChoiceInWords() {
+        #expect(PlayButton.accessibilityLabel(for: GameChoice(course: .hiragana, difficulty: .easy)) == "あそぶ ひらがな やさしい")
+    }
 }
