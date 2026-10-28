@@ -123,8 +123,11 @@ enum Palette {
     static let stampWashOpacity = 0.2
 
     // ホーム
-    /// ホームの背景の青い水玉（カードの裏の青を薄く重ねる。引き継ぎブックに値が無いので、文字の邪魔にならない薄さにした）
-    static let homeBackgroundDot = Color(hex: 0x8FB7F9, opacity: 0.3)
+    /// ホームの背景の青い水玉（カードの裏の青を薄く重ねる。引き継ぎブックに値が無いので、文字の邪魔にならない薄さにした。
+    /// ダークでは暗い地の上で目立つので、ライトの半分の濃さにする）
+    static let homeBackgroundDot = Color(UIColor {
+        UIColor(hex: 0x8FB7F9, alpha: $0.userInterfaceStyle == .dark ? 0.15 : 0.3)
+    })
     /// 大きな「あそぶ」の下の影（引き継ぎブックの 6 ページの見本の、強調色より濃い青。ダークは強調色を暗くした青）
     static let playButtonShadow = Color.dynamic(light: 0x234FA5, dark: 0x4A78C9)
     /// ホームのタイトルの色違いの文字の色（6 ページの見本の 青・赤・緑 の順。4 色目の紫は色の表に無いので、絵のオレンジにした）
