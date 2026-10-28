@@ -103,6 +103,17 @@ struct ParentsModelTests {
         #expect(status.canRestore)
     }
 
+    /// 値段を読み終えたのに読めなかったら、読み込み中ではなく読めなかったことと開き直す案内を出す（PR #43 の申し送り）
+    @Test
+    func failedPriceShowsFailure() {
+        let status = ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false, priceLoadFailed: true)
+        #expect(status.priceText == String(localized: "読み込めませんでした"))
+        #expect(status.priceFailureNote != nil)
+        #expect(!status.canPurchase)
+        #expect(status.canRestore)
+        #expect(ParentsPassStatus(hasPass: false, displayPrice: nil, isBusy: false).priceFailureNote == nil, "読み込み中は案内を出さない")
+    }
+
     /// 処理中は、購入も復元も押せない
     @Test
     func busyDisablesButtons() {
@@ -298,6 +309,29 @@ struct ParentsModelTests {
         model.appear()
         #expect(await waitUntil { model.status.displayPrice == "¥100" })
         #expect(model.status.canPurchase)
+        passStore.stop()
+    }
+
+    /// 値段を読めなかったら読めなかった表示にし、読み直し始めたら読み込み中に戻し、読めたら値段を出す
+    @Test
+    func priceFailureUntilReloaded() async throws {
+        let backend = FakePassStoreBackend()
+        backend.displayPrice = nil
+        let passStore = PassStore(backend: backend, dataStore: InMemoryAppDataStore(data: .initial))
+        let model = ParentsModel(passStore: passStore)
+        #expect(model.status.priceText == String(localized: "読み込み中…"), "読み始める前は読み込み中")
+        await passStore.start()
+        try #require(await waitUntil { passStore.priceLoadFailed })
+        #expect(model.status.priceText == String(localized: "読み込めませんでした"))
+        backend.displayPrice = "¥100"
+        backend.holdsPriceLoads = true
+        model.appear()
+        try #require(await waitUntil { backend.heldPriceLoadCount == 1 })
+        #expect(model.status.priceText == String(localized: "読み込み中…"))
+        #expect(model.status.priceFailureNote == nil)
+        backend.releasePriceLoads()
+        #expect(await waitUntil { model.status.priceText == "¥100" })
+        #expect(!passStore.priceLoadFailed)
         passStore.stop()
     }
 

@@ -107,6 +107,8 @@ struct ParentsPassStatus: Equatable, Sendable {
     let displayPrice: String?
     /// 購入・復元の途中か（押してから処理が始まるまでを含む）
     let isBusy: Bool
+    /// 値段を読み終えたのに読めなかったか（読み込み中とは別の表示にする）
+    var priceLoadFailed = false
 
     /// 「購入する」を出すか（購入済みなら出さず、その旨を出す）
     var showsPurchaseButton: Bool {
@@ -128,9 +130,17 @@ struct ParentsPassStatus: Equatable, Sendable {
         showsRestoreButton && !isBusy
     }
 
-    /// 値段の欄に出す文字（読めるまでは読み込み中の表示。値段を直書きしない）
+    /// 値段の欄に出す文字（読めるまでは読み込み中、読めなかったらその旨の表示。値段を直書きしない）
     var priceText: String {
-        displayPrice ?? String(localized: "読み込み中…")
+        if let displayPrice {
+            return displayPrice
+        }
+        return priceLoadFailed ? String(localized: "読み込めませんでした") : String(localized: "読み込み中…")
+    }
+
+    /// 値段を読めなかったときに、値段の下に出す説明（読めたとき・読み込み中は nil）
+    var priceFailureNote: String? {
+        displayPrice == nil && priceLoadFailed ? String(localized: "通信できる状態で、この画面を開き直すと読み込みます。") : nil
     }
 }
 
@@ -170,7 +180,8 @@ final class ParentsModel {
         ParentsPassStatus(
             hasPass: passStore.hasPass,
             displayPrice: passStore.displayPrice,
-            isBusy: passStore.isBusy || pendingAction != nil
+            isBusy: passStore.isBusy || pendingAction != nil,
+            priceLoadFailed: passStore.priceLoadFailed
         )
     }
 

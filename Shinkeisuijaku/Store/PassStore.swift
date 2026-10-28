@@ -66,6 +66,9 @@ final class PassStore {
     private(set) var hasPass: Bool
     /// 値段の表示（StoreKit の `displayPrice`）。読めるまでは nil
     private(set) var displayPrice: String?
+    /// 値段を読み終えたのに読めなかったか（通信できない など）。次に読み直し始めたら false に戻す（読み込み中と見分ける）。
+    /// 読み直しは、前面に戻ったときの確認（`refreshEntitlement()`）と、おうちの方への画面を開いたときに行う
+    private(set) var priceLoadFailed = false
     /// 購入・復元の途中か（ボタンを押せなくする）
     private(set) var isBusy = false
 
@@ -112,6 +115,7 @@ final class PassStore {
         guard displayPrice == nil, priceTask == nil else {
             return
         }
+        priceLoadFailed = false
         priceTask = Task { [weak self] in
             guard let backend = self?.backend else {
                 return
@@ -125,6 +129,7 @@ final class PassStore {
             if displayPrice == nil {
                 displayPrice = price
             }
+            priceLoadFailed = displayPrice == nil
         }
     }
 
