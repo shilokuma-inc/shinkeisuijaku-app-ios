@@ -52,7 +52,8 @@ final class AppFlow {
     private(set) var isShowingParentalGate = false
     /// おうちの方への流れ（保護者の確認 → おうちの方への画面）をどこから始めたか（流れの外では nil）
     private(set) var parentsEntry: ParentsEntry?
-    /// クリアのダイアログで押した、鍵の付いた次の難易度（案内を出している。押していなければ nil。ゲームを始めるたびに消す）
+    /// クリアのダイアログで押した、鍵の付いた次の難易度（案内を出している。押していなければ nil。
+    /// ゲームを始める・ホームに戻る・スタンプちょうを開くたびに消す（クリアのダイアログを離れたら、案内は要らない）
     private(set) var clearLockedDifficulty: Difficulty?
 
     @ObservationIgnored let store: any AppDataStore
@@ -151,6 +152,7 @@ final class AppFlow {
     func goHome() {
         path = []
         parentsEntry = nil
+        clearLockedDifficulty = nil
     }
 
     /// 「ほかの あそびかた」のコースを押したとき。そのコースのコース選択のダイアログを出す
@@ -184,6 +186,7 @@ final class AppFlow {
     /// スタンプちょうを開く（ホームのボタン・クリアの「スタンプちょう」）。クリアから開いたときもプレイを残さないので、戻るとホームへ
     func openStampBook() {
         path = [.stampBook]
+        clearLockedDifficulty = nil
     }
 
     /// スタンプちょうの並べ方（保存の持っているスタンプとパスの権利から。開くたびに保存を読み直す）

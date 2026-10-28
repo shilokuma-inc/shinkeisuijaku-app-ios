@@ -3,7 +3,7 @@
 //  ShinkeisuijakuTests
 //
 //  購入の流れのうち、何もしないとき・途中で変わったときを確かめる（`AppFlowPurchaseTests` の続き。type_body_length のためファイルを分ける）。
-//  購入がうまくいかなかったとき・案内や確認を出していないときに届いた操作・購入の途中で画面が変わったとき。
+//  購入がうまくいかなかったとき・案内や確認を出していないときに届いた操作・購入の途中で画面が変わったとき・クリアのダイアログを離れたとき。
 //
 
 import Foundation
@@ -79,5 +79,17 @@ extension AppFlowPurchaseTests {
         #expect(flow.hasPass)
         #expect(flow.path.isEmpty)
         #expect(flow.session == nil)
+    }
+
+    /// クリアのダイアログで鍵の付いた次の難易度を押した後に、ホーム・スタンプちょうへ行ったら、押した難易度と案内を消す
+    @Test(arguments: [ClearAction.home, .stampBook])
+    func leavingClearForgetsLockedDifficulty(action: ClearAction) throws {
+        let flow = makeFixture(data: .initial).flow
+        flow.recordClear()
+        flow.handle(.nextDifficulty(.normal))
+        try #require(flow.clearLockedDifficulty == .normal)
+        flow.handle(action)
+        #expect(flow.clearLockedDifficulty == nil)
+        #expect(!flow.showsClearLockedGuide)
     }
 }
