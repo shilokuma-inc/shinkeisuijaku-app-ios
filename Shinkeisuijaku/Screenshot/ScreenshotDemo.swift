@@ -24,8 +24,11 @@ enum ScreenshotDemo {
         case designTokenTypes
     }
 
+    /// 撮影モードで起動するときの起動引数
+    static let argument = "-screenshot-demo"
+
     /// 撮影モードで起動しているか
-    static let isEnabled = ProcessInfo.processInfo.arguments.contains("-screenshot-demo")
+    static let isEnabled = ProcessInfo.processInfo.arguments.contains(argument)
 
     /// 撮影モードで開く画面。撮影モードでないときと、知らない値を渡されたときは nil
     static let scene: Scene? = {

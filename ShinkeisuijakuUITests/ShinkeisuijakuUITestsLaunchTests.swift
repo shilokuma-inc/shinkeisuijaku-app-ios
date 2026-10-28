@@ -19,6 +19,8 @@ final class ShinkeisuijakuUITestsLaunchTests: XCTestCase {
     @MainActor
     func testLaunch() throws {
         let app = XCUIApplication()
+        // メモリ上の保存に切り替え、Simulator の実際の UserDefaults を使わない（アプリの AppDataStoreFactory.uiTestingArgument）
+        app.launchArguments = ["-uiTesting"]
         app.launch()
 
         // 起動直後のスクリーンショットをテスト結果に添付する
