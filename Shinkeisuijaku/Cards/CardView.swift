@@ -149,25 +149,7 @@ private struct CardBackSide: View {
         RoundedRectangle(cornerRadius: Metrics.cardCornerRadius)
             .fill(Palette.cardBack)
             .overlay {
-                Canvas { context, size in
-                    let spacing = Metrics.cardBackDotSpacing
-                    let diameter = Metrics.cardBackDotDiameter
-                    // 水玉の並びをカードの真ん中に寄せる（端の水玉が角丸で切れないように、余りを両側に分ける）
-                    let columns = max(Int(size.width / spacing), 1)
-                    let rows = max(Int(size.height / spacing), 1)
-                    let startX = (size.width - CGFloat(columns - 1) * spacing) / 2
-                    let startY = (size.height - CGFloat(rows - 1) * spacing) / 2
-                    var y = startY
-                    while y < size.height {
-                        var x = startX
-                        while x < size.width {
-                            let dot = CGRect(x: x - diameter / 2, y: y - diameter / 2, width: diameter, height: diameter)
-                            context.fill(Path(ellipseIn: dot), with: .color(Palette.cardBackDot))
-                            x += spacing
-                        }
-                        y += spacing
-                    }
-                }
+                DotPattern(spacing: Metrics.cardBackDotSpacing, diameter: Metrics.cardBackDotDiameter, color: Palette.cardBackDot)
             }
             .overlay {
                 Text(verbatim: "？")
