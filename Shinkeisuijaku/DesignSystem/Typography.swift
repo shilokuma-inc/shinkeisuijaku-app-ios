@@ -72,6 +72,14 @@ enum Typography {
     /// カードの裏の「？」（短辺の 34%・800）
     static let cardQuestionRatio: CGFloat = 0.34
 
+    /// パス専用のスタンプの「あ」（丸の短辺の 55%・丸ゴ。引き継ぎブックの 6 ページの見本の大きさ）
+    static let stampSymbolRatio: CGFloat = 0.55
+
+    /// パス専用のスタンプの「あ」のフォント。スタンプの大きさで決まるので Dynamic Type では変えない
+    static func stampSymbol(shortSide: CGFloat) -> Font {
+        .custom(roundedFontName, fixedSize: shortSide * stampSymbolRatio)
+    }
+
     /// ひらがなカードの文字のフォント。カードの大きさで決まるので Dynamic Type では変えない（カードからはみ出さないため）
     static func cardLetter(shortSide: CGFloat) -> Font {
         .custom(roundedFontName, fixedSize: shortSide * cardLetterRatio)

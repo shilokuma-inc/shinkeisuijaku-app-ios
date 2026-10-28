@@ -45,6 +45,8 @@ enum Metrics {
     static let roundButtonMinHeight: CGFloat = 44
     /// 完全な丸の角丸（引き継ぎブックの 999）
     static let capsuleCornerRadius: CGFloat = 999
+    /// ヒントのボタンの目のアイコンの高さ
+    static let hintIconHeight: CGFloat = 22
     /// タップできる大きさの下限（すべてのボタン）
     static let minTapTarget: CGFloat = 44
 
