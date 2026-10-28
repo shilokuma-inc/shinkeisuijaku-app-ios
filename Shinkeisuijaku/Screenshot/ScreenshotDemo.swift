@@ -32,6 +32,8 @@ enum ScreenshotDemo {
         case play
         /// クリアのダイアログ（やさしいをクリアして、スタンプをもらった状態）
         case clear
+        /// 保護者の確認のダイアログ（種を固定した問題）。App Store には出さない
+        case parentalGate
     }
 
     /// 撮影モードで起動するときの起動引数
