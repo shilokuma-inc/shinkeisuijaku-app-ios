@@ -1,0 +1,90 @@
+//
+//  Metrics.swift
+//  Shinkeisuijaku
+//
+//  引き継ぎブックの「寸法と角丸」を写した寸法のトークン（単位は pt）。
+//  画面は余白・角丸・高さ・影の数値を直接書かず、ここの値だけを使う。
+//
+
+import CoreGraphics
+
+/// アプリで使う寸法。値は引き継ぎブックの「寸法と角丸」と同じ
+enum Metrics {
+    // 画面の余白
+    /// ゲームの画面の左右の余白
+    static let gameHorizontalPadding: CGFloat = 10
+    /// ホーム・スタンプちょうの左右の余白
+    static let screenHorizontalPadding: CGFloat = 16
+
+    // カード
+    /// カードの列の数
+    static let cardColumns = 4
+    /// カードどうしのすき間（縦横とも）
+    static let cardSpacing: CGFloat = 8
+    /// カードの角丸
+    static let cardCornerRadius: CGFloat = 10
+    /// カードの影の下へのずれ（色は `Palette.cardShadow`）
+    static let cardShadowOffsetY: CGFloat = 2
+    /// カードの裏の水玉の間隔（色は `Palette.cardBackDot`）
+    static let cardBackDotSpacing: CGFloat = 18
+
+    // ボタン
+    /// 大きな「あそぶ」の高さ
+    static let playButtonHeight: CGFloat = 80
+    /// 大きな「あそぶ」の角丸
+    static let playButtonCornerRadius: CGFloat = 24
+    /// 大きな「あそぶ」の下の影のずれ
+    static let playButtonShadowOffsetY: CGFloat = 5
+    /// 通常のボタンの高さ
+    static let buttonHeight: CGFloat = 52
+    /// 通常のボタンの角丸
+    static let buttonCornerRadius: CGFloat = 14
+    /// 境界線の太さ（ボタン・「あと◯ペア」の表示）
+    static let borderWidth: CGFloat = 1
+    /// 丸いボタン（おうちの方へ）の高さの下限
+    static let roundButtonMinHeight: CGFloat = 44
+    /// 完全な丸の角丸（引き継ぎブックの 999）
+    static let capsuleCornerRadius: CGFloat = 999
+    /// タップできる大きさの下限（すべてのボタン）
+    static let minTapTarget: CGFloat = 44
+
+    // 「あと◯ペア」の表示
+    /// 角丸
+    static let pairCountCornerRadius: CGFloat = 12
+    /// 内側の上下の余白
+    static let pairCountVerticalPadding: CGFloat = 6
+    /// 内側の左右の余白
+    static let pairCountHorizontalPadding: CGFloat = 12
+
+    // ダイアログ（色は `Palette.surface`、後ろの幕は `Palette.dialogScrim`）
+    /// 幅の上限
+    static let dialogMaxWidth: CGFloat = 320
+    /// 角丸
+    static let dialogCornerRadius: CGFloat = 22
+    /// 内側の上下の余白
+    static let dialogVerticalPadding: CGFloat = 24
+    /// 内側の左右の余白
+    static let dialogHorizontalPadding: CGFloat = 20
+
+    // スタンプ
+    /// スタンプちょうのスタンプの直径の下限
+    static let stampBookMinDiameter: CGFloat = 72
+    /// スタンプちょうのスタンプの直径の上限
+    static let stampBookMaxDiameter: CGFloat = 80
+    /// スタンプちょうのスタンプの影
+    static let stampBookShadowRadius: CGFloat = 3
+    /// クリア画面のスタンプの直径
+    static let clearStampDiameter: CGFloat = 124
+    /// クリア画面のスタンプのかたむき（度）
+    static let clearStampRotationDegrees: Double = 8
+    /// クリア画面のスタンプの点線の青いふちの太さ（色は `Palette.accent`）
+    static let clearStampBorderWidth: CGFloat = 3
+    /// 銀と金のスタンプのふちの太さ
+    static let stampRimWidth: CGFloat = 5
+
+    // 絵
+    /// 絵の元の枠の大きさ（SVG の 1 つの図の幅と高さ）
+    static let artCanvasSize: CGFloat = 108
+    /// 絵の輪郭線の太さ（枠が `artCanvasSize` のときの値。色は `Palette.artOutline`）
+    static let artOutlineWidth: CGFloat = 2.2
+}
