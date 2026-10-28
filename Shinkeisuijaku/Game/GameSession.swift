@@ -1,0 +1,166 @@
+//
+//  GameSession.swift
+//  Shinkeisuijaku
+//
+//  1 回のゲームの進み方（最初に全部見せる・めくり・ハズレを裏返す・ヒント・クリア）。
+//  時間の経過は `GameClock` を注入し、テストでは実際の時間を待たない。秒数は `GameTiming` で外から渡す。
+//
+
+import Foundation
+import Observation
+
+/// 時間を待つもの。アプリでは `Task.sleep`、テストでは差し替える（ゲームの進みは画面と同じ MainActor で扱う）
+@MainActor
+protocol GameClock {
+    /// 指定した秒数だけ待つ。Task が cancel されたら早めに戻ってよい
+    func sleep(for seconds: TimeInterval) async
+}
+
+/// `Task.sleep` で実際の時間を待つ時計
+struct SystemGameClock: GameClock {
+    func sleep(for seconds: TimeInterval) async {
+        try? await Task.sleep(for: .seconds(seconds))
+    }
+}
+
+/// ゲームの秒数。値はデザイントークン（引き継ぎブックの「動き」）から作り、UI テストでは短くする
+struct GameTiming: Sendable {
+    /// 始めに全部見せる時間（ペアの数・初回クリア前か から決める）
+    let revealAll: @Sendable (_ pairCount: Int, _ isBeforeFirstClear: Bool) -> TimeInterval
+    /// ハズレの 2 枚が裏に戻るまでの時間
+    let mismatchDelay: TimeInterval
+    /// ヒントで全部見せる時間
+    let hintDuration: TimeInterval
+    /// 全部揃ってから、クリアのダイアログを出すまでの間
+    let clearDialogDelay: TimeInterval
+}
+
+/// 1 回のゲーム
+@Observable
+final class GameSession {
+    /// ゲームの段階
+    enum Phase: Equatable, Sendable {
+        /// 始まる前
+        case ready
+        /// 始めに全部のカードを見せている
+        case revealingAll
+        /// カードをめくれる
+        case playing
+        /// ハズレの 2 枚を見せていて、裏に戻すのを待っている
+        case resolvingMismatch
+        /// ヒントで全部のカードを見せている
+        case hinting
+        /// 全部揃って、クリアのダイアログを出すのを待っている
+        case finishing
+        /// クリア（ダイアログを出す）
+        case cleared
+    }
+
+    let course: Course
+    let difficulty: Difficulty
+    /// 初回クリア前のゲームか（始めに全部見せる時間が長くなる）
+    let isBeforeFirstClear: Bool
+    private(set) var board: GameBoard
+    private(set) var phase: Phase = .ready
+
+    @ObservationIgnored private let timing: GameTiming
+    @ObservationIgnored private let clock: any GameClock
+
+    init(
+        course: Course,
+        difficulty: Difficulty,
+        isBeforeFirstClear: Bool,
+        board: GameBoard,
+        timing: GameTiming,
+        clock: any GameClock = SystemGameClock()
+    ) {
+        self.course = course
+        self.difficulty = difficulty
+        self.isBeforeFirstClear = isBeforeFirstClear
+        self.board = board
+        self.timing = timing
+        self.clock = clock
+    }
+
+    /// 揃っていないペアの数（「あと◯ペア」）
+    var remainingPairs: Int {
+        board.remainingPairs
+    }
+
+    /// カードを押せないか（全部見せている・ハズレを戻すのを待っている・ヒント・クリアの後）
+    var isInputLocked: Bool {
+        phase != .playing
+    }
+
+    /// ヒントを押せるか
+    var canShowHint: Bool {
+        phase == .playing
+    }
+
+    /// カードの表を見せるか（めくった・揃った、または全部見せている・ヒントのあいだ）
+    func isShowingFace(of card: Card) -> Bool {
+        card.isFaceUp || phase == .revealingAll || phase == .hinting
+    }
+
+    /// 始めに全部のカードを見せてから、めくれるようにする
+    func start() async {
+        guard phase == .ready else {
+            return
+        }
+        phase = .revealingAll
+        await clock.sleep(for: timing.revealAll(board.cards.count / 2, isBeforeFirstClear))
+        guard !Task.isCancelled, phase == .revealingAll else {
+            return
+        }
+        phase = .playing
+    }
+
+    /// カードを 1 枚めくる。ハズレなら裏に戻るまで、全部揃ったらクリアまで待ってから戻る
+    /// - Returns: めくった結果（揃ったときの振動などに使う）
+    @discardableResult
+    func flip(cardID: Card.ID) async -> FlipResult {
+        guard phase == .playing else {
+            return .ignored
+        }
+        let result = board.flip(cardID: cardID)
+        switch result {
+        case .ignored, .firstCard:
+            break
+        case .matched:
+            if board.isCleared {
+                await finish()
+            }
+        case .mismatched:
+            phase = .resolvingMismatch
+            await clock.sleep(for: timing.mismatchDelay)
+            board.concealMismatch()
+            if !Task.isCancelled, phase == .resolvingMismatch {
+                phase = .playing
+            }
+        }
+        return result
+    }
+
+    /// ヒント: 裏のカードを全部、少しのあいだだけ見せる（回数の制限はなし）
+    func showHint() async {
+        guard canShowHint else {
+            return
+        }
+        phase = .hinting
+        await clock.sleep(for: timing.hintDuration)
+        guard !Task.isCancelled, phase == .hinting else {
+            return
+        }
+        phase = .playing
+    }
+
+    /// 全部揃ってから少し待って、クリアにする
+    private func finish() async {
+        phase = .finishing
+        await clock.sleep(for: timing.clearDialogDelay)
+        guard !Task.isCancelled else {
+            return
+        }
+        phase = .cleared
+    }
+}
