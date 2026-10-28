@@ -26,6 +26,8 @@ enum ScreenshotDemo {
         case illustrations
         /// カードの 4 つの状態の見本。App Store には出さない
         case cards
+        /// スタンプの部品の見本。App Store には出さない
+        case stamps
     }
 
     /// 撮影モードで起動するときの起動引数
