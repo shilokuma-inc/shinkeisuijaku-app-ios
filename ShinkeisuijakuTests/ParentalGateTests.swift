@@ -147,4 +147,37 @@ struct ParentalGateTests {
         }
         #expect(gate.submit(using: &generator) == .passed)
     }
+
+    // MARK: - 読み上げ
+
+    /// 問題は記号を読ませず「問題 12 足す 7」と読む
+    @Test
+    func speechReadsQuestionInWords() {
+        #expect(ParentalGateSpeech.question(ParentalGateQuestion(augend: 12, addend: 7)) == "問題 12 足す 7")
+    }
+
+    /// 数字を押すたびに、今までに入れた答えを読む（何も無ければ「未入力」）
+    @Test
+    func speechReadsCurrentInput() {
+        var gate = ParentalGate(question: ParentalGateQuestion(augend: 12, addend: 7))
+        #expect(ParentalGateSpeech.inputValue(gate.input) == "未入力")
+        gate.enter(1)
+        #expect(ParentalGateSpeech.inputChanged(gate.input) == "入力 1")
+        gate.enter(9)
+        #expect(ParentalGateSpeech.inputChanged(gate.input) == "入力 19")
+        gate.delete()
+        gate.delete()
+        #expect(ParentalGateSpeech.inputChanged(gate.input) == "入力 未入力")
+    }
+
+    /// 間違えたときは、新しい問題も読む
+    @Test
+    func speechReadsNewQuestionAfterWrongAnswer() {
+        var gate = ParentalGate(question: ParentalGateQuestion(augend: 12, addend: 7))
+        var generator = SeededRandomNumberGenerator(seed: 2)
+        gate.enter(2)
+        #expect(gate.submit(using: &generator) == .wrong)
+        let next = gate.question
+        #expect(ParentalGateSpeech.wrong(next: next) == "答えが違います。新しい問題は \(next.augend) 足す \(next.addend) です。")
+    }
 }

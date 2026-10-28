@@ -78,7 +78,7 @@ struct ParentalGateView: View {
         Text("\(gate.question.augend) ＋ \(gate.question.addend) ＝ ？")
             .appFont(Typography.pairCountNumber)
             .foregroundStyle(Palette.text)
-            .accessibilityLabel("問題 \(gate.question.augend) 足す \(gate.question.addend)")
+            .accessibilityLabel(Text(verbatim: ParentalGateSpeech.question(gate.question)))
             .accessibilityIdentifier("parentalGate.question")
     }
 
@@ -95,7 +95,7 @@ struct ParentalGateView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("答え")
-            .accessibilityValue(gate.input.isEmpty ? String(localized: "未入力") : gate.input.text)
+            .accessibilityValue(Text(verbatim: ParentalGateSpeech.inputValue(gate.input)))
             .accessibilityIdentifier("parentalGate.answer")
     }
 
@@ -112,6 +112,7 @@ struct ParentalGateView: View {
             GridRow {
                 Button {
                     gate.delete()
+                    AccessibilityAnnouncer.announceAfterPress(ParentalGateSpeech.inputChanged(gate.input))
                 } label: {
                     Text("消す")
                         .appFont(Typography.button)
@@ -131,6 +132,8 @@ struct ParentalGateView: View {
     private func digitKey(_ digit: Int) -> some View {
         Button {
             gate.enter(digit)
+            // 押した数字だけでなく、今までに入れた答えを読み上げる
+            AccessibilityAnnouncer.announceAfterPress(ParentalGateSpeech.inputChanged(gate.input))
         } label: {
             Text(verbatim: String(digit))
                 .appFont(Typography.difficultyButton)
@@ -145,7 +148,8 @@ struct ParentalGateView: View {
         case .passed:
             onPassed()
         case .wrong:
-            AccessibilityNotification.Announcement(String(localized: "答えが違います。別の問題に変わりました。")).post()
+            // 画面の「答えが違います」に加えて、新しい問題も読み上げる（問題の欄へ戻らなくても解ける）
+            AccessibilityAnnouncer.announceAfterPress(ParentalGateSpeech.wrong(next: gate.question))
         case .empty:
             break
         }
