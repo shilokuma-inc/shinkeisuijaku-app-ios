@@ -140,7 +140,7 @@ struct HomeTitleView: View {
         Text(Self.coloredTitle)
             .appFont(Typography.homeTitle)
             .lineLimit(1)
-            .minimumScaleFactor(Metrics.homeTitleMinimumScale)
+            .minimumScaleFactor(Metrics.textMinimumScale)
             .accessibilityLabel(Text(verbatim: Self.title))
             .accessibilityAddTraits(.isHeader)
     }

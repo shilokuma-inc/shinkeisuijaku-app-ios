@@ -86,7 +86,7 @@ struct PlayView: View {
                 .foregroundStyle(Palette.text)
             }
             .lineLimit(1)
-            .minimumScaleFactor(0.5)
+            .minimumScaleFactor(Metrics.textMinimumScale)
             .padding(.vertical, Metrics.pairCountVerticalPadding)
             .padding(.horizontal, Metrics.pairCountHorizontalPadding)
             .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.pairCountCornerRadius))
@@ -102,7 +102,7 @@ struct PlayView: View {
                 .appFont(Typography.body)
                 .foregroundStyle(Palette.muted)
                 .lineLimit(1)
-                .minimumScaleFactor(0.5)
+                .minimumScaleFactor(Metrics.textMinimumScale)
         }
     }
 
