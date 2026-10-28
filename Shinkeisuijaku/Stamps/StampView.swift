@@ -69,6 +69,8 @@ struct StampView: View {
                 IllustrationView(picture: picture)
                     .frame(width: diameter * Metrics.stampPictureRatio)
             }
+            // 中の絵や文字に影を付けず、丸の外側にだけ付ける
+            .compositingGroup()
             .shadow(color: Palette.stampShadow, radius: Metrics.stampShadowRadius, y: Metrics.stampShadowOffsetY)
         case let .owned(.pass(course, rim)):
             let colors = StampStyle.rimColors(of: rim)
@@ -77,6 +79,8 @@ struct StampView: View {
                 Circle().strokeBorder(colors.rim, lineWidth: Metrics.stampRimWidth)
                 courseSymbol(course)
             }
+            // 中の絵や文字に影を付けず、丸の外側にだけ付ける
+            .compositingGroup()
             .shadow(color: Palette.stampShadow, radius: Metrics.stampShadowRadius, y: Metrics.stampShadowOffsetY)
         case .empty:
             dashedCircle(Palette.stampEmpty)
@@ -84,7 +88,7 @@ struct StampView: View {
             ZStack {
                 dashedCircle(Palette.stampGold)
                 LockShape()
-                    .fill(Palette.muted)
+                    .fill(Palette.stampLock)
                     .frame(width: diameter * Metrics.stampLockRatio, height: diameter * Metrics.stampLockRatio)
             }
         }

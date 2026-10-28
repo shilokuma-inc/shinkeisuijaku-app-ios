@@ -115,6 +115,8 @@ enum Palette {
     static let stampGoldWash = Color(hex: 0xFFF4CC)
     /// 空の枠。まだ手に入れていない枠の点線の丸
     static let stampEmpty = Color(hex: 0xC9BBA8)
+    /// パス専用の枠の鍵（引き継ぎブックの 6 ページの見本の明るい灰茶。空の枠の点線より少し濃くする）
+    static let stampLock = Color(hex: 0x9C8C7A)
     /// スタンプの影（カードの影と同じ黒・透明度 14%）
     static let stampShadow = Color(hex: 0x000000, opacity: 0.14)
     /// 通常のスタンプの淡い地の、絵の色の濃さ（絵の色をこの透明度で白に重ねる。「絵の色に合う淡い地」）
