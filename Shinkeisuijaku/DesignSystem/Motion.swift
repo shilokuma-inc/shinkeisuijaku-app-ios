@@ -37,6 +37,8 @@ enum Motion {
     static let hintDuration: TimeInterval = 1.1
     /// 全部揃ってから、クリアのダイアログを出すまでの間
     static let clearDialogDelay: TimeInterval = 1.1
+    /// ダイアログがふわっと出る時間（引き継ぎブックに無いので、めくりより少し短くした）
+    static let dialogFadeDuration: TimeInterval = 0.2
 
     /// 始めに全部見せる時間。初回クリア前は 4.8 秒、それ以降はペアの数で決まる
     /// - Parameters:

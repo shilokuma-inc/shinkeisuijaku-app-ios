@@ -17,17 +17,29 @@ struct DialogContainer<Content: View>: View {
             Palette.dialogScrim
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
-            VStack(spacing: Metrics.cardSpacing) {
-                content()
+            // 画面に入るときはそのまま、入らないとき（iPhone SE で文字を大きくしたときなど）はスクロールする
+            ViewThatFits(in: .vertical) {
+                box
+                ScrollView {
+                    box
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.vertical, Metrics.dialogVerticalPadding)
-            .padding(.horizontal, Metrics.dialogHorizontalPadding)
             .frame(maxWidth: Metrics.dialogMaxWidth)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.dialogCornerRadius))
             .padding(.horizontal, Metrics.screenHorizontalPadding)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
         }
+    }
+
+    private var box: some View {
+        VStack(spacing: Metrics.cardSpacing) {
+            content()
+        }
+        .padding(.vertical, Metrics.dialogVerticalPadding)
+        .padding(.horizontal, Metrics.dialogHorizontalPadding)
+        .frame(maxWidth: Metrics.dialogMaxWidth)
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.dialogCornerRadius))
     }
 }
 
