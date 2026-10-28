@@ -258,7 +258,7 @@ struct PassStoreTests {
 
     /// 値段の読み込み（通信）が終わらなくても、復元は権利を確かめたら終わり、ボタンを押せるように戻す（PR #32 の申し送り）
     @Test
-    func restoreDoesNotWaitForPrice() async {
+    func restoreDoesNotWaitForPrice() async throws {
         let fixture = makeStore()
         let store = fixture.store
         let backend = fixture.backend
@@ -266,6 +266,8 @@ struct PassStoreTests {
         backend.holdsPriceLoads = true
         backend.restorableEntitlement = true
         await store.start()
+        // 値段の読み込みが本当に止まっているあいだに復元する（まだ読み始めていないだけ、を除く）
+        try #require(await waitUntil { backend.heldPriceLoadCount == 1 })
         #expect(await store.restore() == .restored)
         #expect(!store.isBusy)
         #expect(store.hasPass)
