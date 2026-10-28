@@ -19,8 +19,9 @@ struct ParentsView: View {
     @State private var model: ParentsModel
     @Environment(\.openURL) private var openURL
 
-    init(passStore: PassStore, onHome: @escaping () -> Void = {}) {
-        _model = State(initialValue: ParentsModel(passStore: passStore))
+    /// - Parameter onPurchased: 購入が終わったとき（鍵の付いた難易度から来ていれば、画面の流れがそのゲームを始める）
+    init(passStore: PassStore, onHome: @escaping () -> Void = {}, onPurchased: @escaping () -> Void = {}) {
+        _model = State(initialValue: ParentsModel(passStore: passStore, onPurchased: onPurchased))
         self.onHome = onHome
     }
 

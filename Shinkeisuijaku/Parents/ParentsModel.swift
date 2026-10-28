@@ -143,9 +143,12 @@ final class ParentsModel {
     private(set) var pendingAction: ParentsAction?
 
     @ObservationIgnored let passStore: PassStore
+    /// 購入が終わったとき（`.purchased`）に呼ぶ。画面の流れが、押した難易度のゲームを始めるのに使う
+    @ObservationIgnored private let onPurchased: () -> Void
 
-    init(passStore: PassStore) {
+    init(passStore: PassStore, onPurchased: @escaping () -> Void = {}) {
         self.passStore = passStore
+        self.onPurchased = onPurchased
     }
 
     /// 画面に出す結果の文。パスの権利が付いたら、承認待ち・うまくいかなかった文は出さない
@@ -176,19 +179,26 @@ final class ParentsModel {
         pendingAction = action
     }
 
-    /// 押された処理を進め、結果の文を出す（画面の寿命の `.task(id:)` から呼ぶ）。押された処理が無ければ何もしない
+    /// 押された処理を進め、結果の文を出す（画面の寿命の `.task(id:)` から呼ぶ）。押された処理が無ければ何もしない。
+    /// 購入が終わったら、処理を終えてから `onPurchased` を呼ぶ（呼ばれた先で画面が変わっても、処理中のまま残らない）
     func runPendingAction() async {
         guard let action = pendingAction else {
             return
         }
         // 前の結果の文は、新しい処理を始めたら消す（やめたときに古い文が残らないように）
         message = nil
+        var purchased = false
         switch action {
         case .purchase:
-            message = ParentsMessage(purchase: await passStore.purchase())
+            let result = await passStore.purchase()
+            purchased = result == .purchased
+            message = ParentsMessage(purchase: result)
         case .restore:
             message = ParentsMessage(restore: await passStore.restore())
         }
         pendingAction = nil
+        if purchased {
+            onPurchased()
+        }
     }
 }
