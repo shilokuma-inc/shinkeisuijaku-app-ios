@@ -4,7 +4,7 @@
 //
 //  おうちの方への画面（仕様書の「画面と遷移」「収益・課金」・引き継ぎブックの 10 ページ）。保護者の確認を通ったあとにだけ開く。
 //  パスの内容と価格・「購入する」・「購入を復元」・方針の説明（広告なし・個人情報を集めない・データは端末の中だけ・通信しない）・
-//  プライバシーポリシーとお問い合わせのリンク（Safari で開く）と、下に「ホームにもどる」。
+//  プライバシーポリシーとお問い合わせのリンク（ブラウザで開く）と、下に「ホームにもどる」。
 //  引き継ぎブックに見本が無いので、面の色の箱・通常と主なボタン・文字のトークンだけで組む。保護者向けなので文は漢字を使う。
 //  何を出すか・結果の文は `ParentsModel` が決め、この画面はそれを並べるだけ。
 //
@@ -45,7 +45,7 @@ struct ParentsView: View {
         .task(id: model.pendingAction) {
             await model.runPendingAction()
         }
-        .onChange(of: model.message) { _, message in
+        .onChange(of: model.visibleMessage) { _, message in
             if let message {
                 AccessibilityNotification.Announcement(message.text).post()
             }
@@ -105,7 +105,7 @@ struct ParentsView: View {
                 .disabled(!status.canRestore)
                 .accessibilityIdentifier("parents.restore")
             }
-            if let message = model.message {
+            if let message = model.visibleMessage {
                 messageView(message)
             }
         }
@@ -180,7 +180,7 @@ struct ParentsView: View {
             ParentsBullet("広告は表示しません。")
             ParentsBullet("お名前などの個人情報は集めません。アカウントの登録もありません。")
             ParentsBullet("遊んだ記録（スタンプなど）は、この端末の中だけに保存します。")
-            ParentsBullet("通信はしません。購入と復元のときだけ、App Store を使います。")
+            ParentsBullet("お子さまの記録を外部に送る通信はしません。パスの価格・購入・復元の確認にだけ App Store を使います。")
         }
     }
 
@@ -189,7 +189,7 @@ struct ParentsView: View {
         ParentsSection(title: "サポート") {
             linkButton("プライバシーポリシー", url: ParentsLinks.privacyPolicy, identifier: "parents.privacy")
             linkButton("お問い合わせ", url: ParentsLinks.contact, identifier: "parents.contact")
-            Text("Safari で開きます。")
+            Text("ブラウザで開きます。")
                 .appFont(Typography.note)
                 .foregroundStyle(Palette.muted)
         }
@@ -208,7 +208,7 @@ struct ParentsView: View {
             .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
         }
         .buttonStyle(SurfaceButtonStyle())
-        .accessibilityHint(Text("Safari で開きます"))
+        .accessibilityHint(Text("ブラウザで開きます"))
         .accessibilityAddTraits(.isLink)
         .accessibilityIdentifier(identifier)
     }
@@ -221,6 +221,8 @@ struct ParentsView: View {
                 .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
         }
         .buttonStyle(SurfaceButtonStyle())
+        // 購入・復元の途中で戻ると、結果の文を保護者に伝えられないので、終わるまで押せなくする
+        .disabled(model.status.isBusy)
         .accessibilityIdentifier("parents.home")
         .padding(.horizontal, Metrics.screenHorizontalPadding)
         .padding(.vertical, Metrics.cardSpacing)
