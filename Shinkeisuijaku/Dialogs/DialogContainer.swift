@@ -17,16 +17,16 @@ struct DialogContainer<Content: View>: View {
             Palette.dialogScrim
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
-            // 画面に入るときはそのまま、入らないとき（iPhone SE で文字を大きくしたときなど）はスクロールする
-            ViewThatFits(in: .vertical) {
-                box
+            // いつもスクロールの中に置き、画面の高さより低いときは真ん中に置く（入らないとき（iPhone SE で文字を大きくしたときなど）だけスクロールする）。
+            // 入るか入らないかで中身を作り直さないので、文字の大きさが変わっても VoiceOver のフォーカスが外れない
+            GeometryReader { proxy in
                 ScrollView {
                     box
+                        .padding(.horizontal, Metrics.screenHorizontalPadding)
+                        .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
                 .scrollBounceBehavior(.basedOnSize)
             }
-            .frame(maxWidth: Metrics.dialogMaxWidth)
-            .padding(.horizontal, Metrics.screenHorizontalPadding)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
         }
