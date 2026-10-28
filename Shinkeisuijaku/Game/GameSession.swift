@@ -78,7 +78,8 @@ final class GameSession {
 
     @ObservationIgnored private let timing: GameTiming
     @ObservationIgnored private let clock: any GameClock
-    /// 待っている処理。同時に 1 つだけ（待っているあいだは `phase` が `.playing` でないので、次の操作は入らない）
+    /// 最後に始めた待つ処理。同時に 1 つだけ（待っているあいだは `phase` が `.playing` でないので、次の操作は入らない）。
+    /// 画面を閉じるときは `quit()` を呼んで止める（`[weak self]` なので、呼び忘れても待ち時間の後に何もせずに終わる）
     @ObservationIgnored private var pendingTask: Task<Void, Never>?
 
     /// コースと難易度のカードを配って、ゲームを用意する
@@ -171,12 +172,12 @@ final class GameSession {
 
     /// 「やめる」: 待っている処理を止め、これより先に進めない（揃えた直後にやめても、クリアにしない）
     func quit() {
+        // 参照は残し、`waitForPendingWork()` で止まりきるまで待てるようにする
         pendingTask?.cancel()
-        pendingTask = nil
         phase = .quit
     }
 
-    /// 待っている処理が終わるまで待つ（テストで、時計を進めた後の状態を確かめるため）
+    /// 最後に始めた待つ処理が終わるまで待つ（テストで、時計を進めた後や止めた後の状態を確かめるため）
     func waitForPendingWork() async {
         await pendingTask?.value
     }
@@ -189,7 +190,6 @@ final class GameSession {
             guard !Task.isCancelled, let self, self.phase != .quit else {
                 return
             }
-            self.pendingTask = nil
             advance(self)
         }
     }
