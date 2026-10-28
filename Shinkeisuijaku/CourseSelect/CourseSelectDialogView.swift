@@ -96,6 +96,34 @@ private struct CourseDifficultyButton: View {
     }
 }
 
+extension View {
+    /// 画面の流れが出しているコース選択のダイアログを、この画面（ホーム）の上に重ねる
+    func courseSelectDialog(flow: AppFlow) -> some View {
+        modifier(CourseSelectDialogModifier(flow: flow))
+    }
+}
+
+/// コース選択のダイアログを重ねる。出す・閉じるときは、ほかのダイアログと同じく薄く出し入れする
+private struct CourseSelectDialogModifier: ViewModifier {
+    let flow: AppFlow
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if let selection = flow.courseSelection {
+                    CourseSelectDialogView(
+                        selection: selection,
+                        hasPass: flow.hasPass,
+                        onSelect: flow.selectDifficulty,
+                        onClose: flow.closeCourseSelection
+                    )
+                    .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: Motion.dialogFadeDuration), value: flow.courseSelection)
+    }
+}
+
 #Preview {
     ZStack {
         HomeScreenshotDemoView()

@@ -24,6 +24,8 @@ final class AppFlow {
     private(set) var session: GameSession?
     /// 前回のコースと難易度（保存と同じ値。ホームの「あそぶ」の表示が変化を見られるよう、観測できる値として持つ）
     private(set) var lastChoice: GameChoice
+    /// ホームの上に出しているコース選択のダイアログ（出していないときは nil）
+    private(set) var courseSelection: CourseSelection?
 
     @ObservationIgnored let store: any AppDataStore
     @ObservationIgnored let passStore: PassStore
@@ -109,6 +111,34 @@ final class AppFlow {
     /// ホームに戻る（「やめる」・クリアの「ホームにもどる」。初回クリア前に起動してすぐのゲームでも、ホームへ）
     func goHome() {
         path = []
+    }
+
+    /// 「ほかの あそびかた」のコースを押したとき。そのコースのコース選択のダイアログを出す
+    func chooseCourse(_ course: Course) {
+        courseSelection = CourseSelection(course: course)
+    }
+
+    /// コース選択のダイアログを閉じる（「とじる」）
+    func closeCourseSelection() {
+        courseSelection = nil
+    }
+
+    /// コース選択のダイアログで難易度を押したとき。鍵が無ければダイアログを閉じてゲームを始め、
+    /// 鍵が付いていればゲームは始めずにダイアログの中に案内を出す（購入は保護者の確認のあとだけ）。ダイアログを出していなければ何もしない
+    @discardableResult
+    func selectDifficulty(_ difficulty: Difficulty) -> CourseSelectResult? {
+        guard var selection = courseSelection else {
+            return nil
+        }
+        let result = selection.select(difficulty, hasPass: hasPass)
+        switch result {
+        case let .start(choice):
+            courseSelection = nil
+            startGame(choice)
+        case .showLockedGuide:
+            courseSelection = selection
+        }
+        return result
     }
 
     /// クリアのダイアログで押したもの
