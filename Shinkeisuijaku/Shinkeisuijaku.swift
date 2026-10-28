@@ -9,11 +9,12 @@ import SwiftUI
 
 @main
 struct Shinkeisuijaku: App {
-    /// 画面の流れ。`body` が評価し直されても作り直さないよう、起動したときに 1 回だけ作る（撮影モードでは使わない）
-    private let flow: AppFlow?
+    /// 保存とストア。窓がいくつ開いても 1 つを共有するよう、起動したときに 1 回だけ作る（撮影モードでは使わない）。
+    /// 画面の流れ（`AppFlow`）は窓ごとに `RootView` が作る
+    private let services: AppServices?
 
     init() {
-        flow = ScreenshotDemo.scene == nil ? AppFlow.makeForLaunch() : nil
+        services = ScreenshotDemo.scene == nil ? AppServices.makeForLaunch() : nil
     }
 
     var body: some Scene {
@@ -26,8 +27,8 @@ struct Shinkeisuijaku: App {
     @ViewBuilder private var rootView: some View {
         switch ScreenshotDemo.scene {
         case nil:
-            if let flow {
-                RootView(flow: flow)
+            if let services {
+                RootView(services: services)
             }
         case .home:
             HomeScreenshotDemoView()

@@ -33,6 +33,8 @@ struct PlayView: View {
             footer
         }
         .padding(.horizontal, Metrics.gameHorizontalPadding)
+        // iPad では中身の幅に上限を設けて中央に置く（カードが横に広がりすぎない）
+        .contentWidthLimited()
         .padding(.vertical, Metrics.cardSpacing)
         .background(Palette.background)
         // ゲームごとに始め、ゲームが変わる・画面を離れるまで待ってから、そのゲームの待っている処理
@@ -142,7 +144,8 @@ struct PlayView: View {
     }
 }
 
-/// 4 列のカード。行は使える高さで等分する（iPhone SE でもスクロールせずに収まる）
+/// 4 列のカード。行は使える高さで等分する（iPhone SE でもスクロールせずに収まる）。
+/// カードが縦に長くなりすぎないよう高さに上限があるので（`CardGridLayout`）、あまった高さは上下に分けて真ん中に置く
 private struct CardGrid: View {
     let session: GameSession
     let haptics: any Haptics
@@ -150,23 +153,18 @@ private struct CardGrid: View {
     var body: some View {
         GeometryReader { proxy in
             let cards = session.board.cards
-            let columns = Metrics.cardColumns
-            let rows = max((cards.count + columns - 1) / columns, 1)
-            let spacing = Metrics.cardSpacing
-            // 文字を大きくして使える高さが減っても、負の大きさにしない
-            let width = max((proxy.size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns), 0)
-            let height = max((proxy.size.height - spacing * CGFloat(rows - 1)) / CGFloat(rows), 0)
-            VStack(spacing: spacing) {
-                ForEach(0..<rows, id: \.self) { row in
-                    HStack(spacing: spacing) {
-                        ForEach(cards.indices.filter { $0 / columns == row }, id: \.self) { index in
+            let layout = CardGridLayout(cardCount: cards.count, available: proxy.size)
+            VStack(spacing: Metrics.cardSpacing) {
+                ForEach(0..<layout.rows, id: \.self) { row in
+                    HStack(spacing: Metrics.cardSpacing) {
+                        ForEach(cards.indices.filter { $0 / layout.columns == row }, id: \.self) { index in
                             cardButton(cards[index], index: index)
-                                .frame(width: width, height: height)
+                                .frame(width: layout.cardSize.width, height: layout.cardSize.height)
                         }
-                        Spacer(minLength: 0)
                     }
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 

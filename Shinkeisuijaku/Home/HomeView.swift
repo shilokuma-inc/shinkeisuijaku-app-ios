@@ -24,6 +24,8 @@ struct HomeView: View {
         GeometryReader { proxy in
             ScrollView {
                 content
+                    // iPad では中身の幅に上限を設けて中央に置く
+                    .contentWidthLimited()
                     // 画面に入るときは画面の高さいっぱいに広げ、広告なしの一言を一番下に置く。
                     // 文字を大きくして入らないときは、高さを超えて伸び、スクロールで全部見られる
                     .frame(minHeight: proxy.size.height)
@@ -31,13 +33,22 @@ struct HomeView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .background {
-            ZStack {
-                Palette.background
-                DotPattern(spacing: Metrics.homeDotSpacing, diameter: Metrics.homeDotDiameter, color: Palette.homeBackgroundDot)
-            }
-            .ignoresSafeArea()
+            homeBackground
+                .ignoresSafeArea()
+        }
+        // 文字を大きくしてスクロールしたときに、中身がステータスバーに重ならないようにする（スタンプちょう・おうちの方へと同じ）
+        .topSafeAreaBackground {
+            homeBackground
         }
         .accessibilityIdentifier("home")
+    }
+
+    /// 背景（青い水玉）
+    private var homeBackground: some View {
+        ZStack {
+            Palette.background
+            DotPattern(spacing: Metrics.homeDotSpacing, diameter: Metrics.homeDotDiameter, color: Palette.homeBackgroundDot)
+        }
     }
 
     /// ホームの中身（上から順に並べる）

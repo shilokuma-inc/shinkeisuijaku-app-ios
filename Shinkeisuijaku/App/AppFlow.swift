@@ -83,7 +83,8 @@ final class AppFlow {
         let data = store.load()
         lastChoice = GameChoice(course: data.lastCourse, difficulty: data.lastDifficulty)
         if let choice = LaunchRules.launchGame(data) {
-            startGame(choice)
+            // 起動してすぐのゲームは保存を書き換えない（窓を開き直す・画面を作り直すたびに、ほかの窓で選んだ前回のコースと難易度を上書きしないため）
+            startGame(choice, remembersChoice: false)
         }
     }
 
@@ -103,9 +104,10 @@ final class AppFlow {
     }
 
     /// ゲームを始めてプレイの画面に進む。コースと難易度は前回のものとして保存する（次の「あそぶ」で始める）
-    func startGame(_ choice: GameChoice) {
+    /// - Parameter remembersChoice: 前回のコースと難易度として保存するか（起動してすぐのゲームでは保存しない）
+    func startGame(_ choice: GameChoice, remembersChoice: Bool = true) {
         var data = store.load()
-        if data.lastCourse != choice.course || data.lastDifficulty != choice.difficulty {
+        if remembersChoice, data.lastCourse != choice.course || data.lastDifficulty != choice.difficulty {
             data.lastCourse = choice.course
             data.lastDifficulty = choice.difficulty
             store.save(data)
