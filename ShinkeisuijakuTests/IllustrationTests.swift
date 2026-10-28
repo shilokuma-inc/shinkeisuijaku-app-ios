@@ -80,4 +80,16 @@ struct IllustrationTests {
         #expect(abs(rind.minX - 10) < 0.001)
         #expect(abs(rind.maxX - 98) < 0.001)
     }
+
+    /// ヒントの目は 2 つの目（白目・黒目・光・眉）で、横長の枠に収まり、絵と同じ輪郭線を使う
+    @Test
+    func hintEyesFitTheirCanvas() {
+        let parts = IllustrationArt.hintEyes
+        #expect(parts.count == 8)
+        let canvas = CGRect(origin: .zero, size: IllustrationArt.hintEyesCanvasSize)
+        for part in parts {
+            #expect(canvas.contains(part.path.boundingRect), "目の部品が枠の外に出ている: \(part.path.boundingRect)")
+        }
+        #expect(parts.filter { $0.lineWidth == Metrics.artOutlineWidth }.count == 4)
+    }
 }
