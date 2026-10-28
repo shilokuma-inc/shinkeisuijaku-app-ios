@@ -75,6 +75,8 @@ enum Metrics {
     static let pressedOpacity: Double = 0.7
     /// ボタンの中の鍵のマークの大きさ（難易度ボタン・次の難易度）
     static let lockIconSize: CGFloat = 16
+    /// 難易度ボタン（コース選択）の内側の左右の余白（引き継ぎブックに値が無いので、6 ページの見本の見た目から決めた）
+    static let difficultyButtonHorizontalPadding: CGFloat = 16
     /// タップできる大きさの下限（すべてのボタン）
     static let minTapTarget: CGFloat = 44
 

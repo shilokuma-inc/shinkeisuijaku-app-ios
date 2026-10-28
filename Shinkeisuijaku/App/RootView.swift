@@ -22,12 +22,13 @@ struct RootView: View {
             HomeView(
                 resumeChoice: flow.resumeChoice,
                 onPlay: flow.play,
-                // コース選択のダイアログ（タスク 14）・スタンプちょう（タスク 15）・おうちの方へ（タスク 18）ができたらつなぐ
-                onChooseCourse: { _ in },
+                onChooseCourse: flow.chooseCourse,
+                // スタンプちょう（タスク 15）・おうちの方へ（タスク 18）ができたらつなぐ
                 onOpenStampBook: {},
                 onOpenParents: {}
             )
             .toolbar(.hidden, for: .navigationBar)
+            .courseSelectDialog(flow: flow)
             .navigationDestination(for: AppFlow.Destination.self) { destination in
                 switch destination {
                 case .game:

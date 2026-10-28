@@ -47,6 +47,8 @@ struct Shinkeisuijaku: App {
             ClearScreenshotDemoView()
         case .parentalGate:
             ParentalGateScreenshotDemoView()
+        case .courseSelect:
+            CourseSelectScreenshotDemoView()
         }
     }
 }
