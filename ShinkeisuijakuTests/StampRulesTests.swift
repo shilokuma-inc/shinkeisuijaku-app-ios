@@ -38,6 +38,18 @@ struct StampRulesTests {
         #expect(Stamp.passStamps == [.pass(.animals, .silver), .pass(.animals, .gold), .pass(.hiragana, .silver), .pass(.hiragana, .gold)])
     }
 
+    /// 保存の識別子は一度出したら変えない（変わると保存済みのスタンプが読めずに消える）。
+    /// 識別子は絵やコースの rawValue から作るので、そちらの名前を変えたときに気づけるよう、全部を文字列で固定する
+    @Test
+    func storedIDsNeverChange() {
+        let ids = (Stamp.regularStamps + Stamp.passStamps).map(\.id)
+        #expect(ids == [
+            "regular.cat", "regular.dog", "regular.rabbit", "regular.panda", "regular.frog", "regular.chick",
+            "regular.fox", "regular.penguin", "regular.apple", "regular.strawberry", "regular.bear", "regular.suika",
+            "pass.animals.silver", "pass.animals.gold", "pass.hiragana.silver", "pass.hiragana.gold"
+        ])
+    }
+
     /// 保存の識別子から同じスタンプに戻る。識別子は重ならない
     @Test
     func idsRoundTripAndAreUnique() {
@@ -72,6 +84,25 @@ struct StampRulesTests {
                 #expect(Stamp.regularStamps.contains(stamp))
                 #expect(!owned.contains(stamp))
             }
+        }
+    }
+
+    /// 通常のスタンプが残り 1 つなら、必ずそれをもらう
+    @Test
+    func lastMissingRegularStampIsAlwaysGiven() {
+        let owned = Array(Stamp.regularStamps.dropLast())
+        for seed in UInt64(1)...20 {
+            #expect(award(.animals, .easy, hasPass: false, owned: owned, seed: seed) == Stamp.regularStamps.last)
+        }
+    }
+
+    /// どの種でも、持っている通常のスタンプはもらわない
+    @Test
+    func ownedRegularStampsAreNeverGiven() {
+        let owned = Array(Stamp.regularStamps.prefix(8))
+        for seed in UInt64(1)...50 {
+            let stamp = award(.hiragana, .easy, hasPass: false, owned: owned, seed: seed)
+            #expect(stamp.map { !owned.contains($0) } == true, "種 \(seed)")
         }
     }
 
@@ -115,11 +146,16 @@ struct StampRulesTests {
         #expect(StampCollection(ids: Stamp.regularStamps.map(\.id)).hasAllRegularStamps)
     }
 
-    /// パスの権利が無いとき（返金など）は、ふつう・むずかしいをクリアしてもパス専用のスタンプはもらわない
+    /// パスの権利が無いとき（返金など）は、ふつう・むずかしいをクリアしてもパス専用のスタンプはもらわない（4 つの組み合わせすべて）
     @Test
-    func noPassStampWithoutEntitlement() throws {
-        let stamp = try #require(award(.animals, .hard, hasPass: false))
-        #expect(Stamp.regularStamps.contains(stamp))
+    func noPassStampWithoutEntitlement() {
+        for course in Course.allCases {
+            for difficulty in [Difficulty.normal, .hard] {
+                let stamp = award(course, difficulty, hasPass: false)
+                #expect(stamp.map { Stamp.regularStamps.contains($0) } == true, "\(course) \(difficulty)")
+                #expect(award(course, difficulty, hasPass: false, owned: Stamp.regularStamps) == nil, "全部そろった後")
+            }
+        }
     }
 
     /// 1 回のクリアで決まるのは 1 つだけで、同じ状態・同じ種なら同じスタンプ
