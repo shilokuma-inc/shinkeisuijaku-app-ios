@@ -18,6 +18,8 @@ final class AppFlow {
         case game
         /// スタンプちょう
         case stampBook
+        /// おうちの方への画面（保護者の確認を通ったあとにだけ積む）
+        case parents
     }
 
     /// ホームの上に積んだ画面（`NavigationStack` の path）
@@ -28,6 +30,8 @@ final class AppFlow {
     private(set) var lastChoice: GameChoice
     /// ホームの上に出しているコース選択のダイアログ（出していないときは nil）
     private(set) var courseSelection: CourseSelection?
+    /// ホームの上に保護者の確認のダイアログを出しているか（「おうちの方へ」を押してから、通るかやめるまで）
+    private(set) var isShowingParentalGate = false
 
     @ObservationIgnored let store: any AppDataStore
     @ObservationIgnored let passStore: PassStore
@@ -175,5 +179,24 @@ final class AppFlow {
             // おうちの方へ（タスク 18・19）の画面ができたらつなぐ
             break
         }
+    }
+
+    /// ホームの「おうちの方へ」。おうちの方への画面は開かずに、先に保護者の確認のダイアログを出す（購入と外部のリンクは確認のあとだけ）
+    func openParents() {
+        isShowingParentalGate = true
+    }
+
+    /// 保護者の確認を通ったとき。ダイアログを閉じて、おうちの方への画面を積む（戻るとホームへ）。ダイアログを出していなければ何もしない
+    func parentalGatePassed() {
+        guard isShowingParentalGate else {
+            return
+        }
+        isShowingParentalGate = false
+        path = [.parents]
+    }
+
+    /// 保護者の確認をやめたとき。ダイアログを閉じてホームのままにする（何も積まない）
+    func cancelParentalGate() {
+        isShowingParentalGate = false
     }
 }
