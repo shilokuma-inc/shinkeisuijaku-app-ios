@@ -11,9 +11,18 @@ import SwiftUI
 
 /// アプリの一番外の画面
 struct RootView: View {
+    /// この窓の画面の流れ。窓ごとに作るので、iPad で窓が 2 つ開いても、ゲーム・クリアの記録・積んだ画面は窓ごとに分かれる。
+    /// `State` は窓の寿命で最初の値だけを持つ（`init` が呼び直されて作った値は捨てられ、画面に出ないのでゲームも始まらない）
     @State private var flow: AppFlow
     @Environment(\.scenePhase) private var scenePhase
 
+    /// 窓ごとの画面の流れを、アプリで 1 つの保存とストアで作る
+    /// - Parameter services: アプリで 1 つの保存とストア（窓をまたいで共有する）
+    init(services: AppServices) {
+        _flow = State(initialValue: AppFlow.makeForLaunch(services: services))
+    }
+
+    /// 作った画面の流れで開く（撮影モード）
     init(flow: AppFlow) {
         _flow = State(initialValue: flow)
     }
@@ -42,6 +51,7 @@ struct RootView: View {
         }
         .parentalGateDialog(flow: flow)
         .task {
+            // ストアはアプリで 1 つなので、窓が増えるたびに呼んでも、取引の変化の購読は 1 回だけ始まる（権利は確かめ直す）
             await flow.passStore.start()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -88,10 +98,8 @@ struct RootView: View {
 }
 
 extension AppFlow {
-    /// 起動のしかたに合わせた保存とストアで、画面の流れを作る（Unit テストのホスト・UI テスト・撮影モードではメモリ上の保存と擬似のストア）
-    static func makeForLaunch() -> AppFlow {
-        let store = AppDataStoreFactory.make()
-        let passStore = PassStore(backend: PassStoreFactory.makeBackend(), dataStore: store)
-        return AppFlow(store: store, passStore: passStore, haptics: SystemHaptics())
+    /// アプリで 1 つの保存とストアで、窓ごとの画面の流れを作る（保存とストアは `AppServices.makeForLaunch()` が起動のしかたに合わせて選ぶ）
+    static func makeForLaunch(services: AppServices) -> AppFlow {
+        AppFlow(store: services.store, passStore: services.passStore, haptics: services.haptics)
     }
 }
