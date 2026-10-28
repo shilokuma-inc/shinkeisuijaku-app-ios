@@ -24,6 +24,8 @@ struct Shinkeisuijaku: App {
             DesignTokenCatalogView(page: .colors)
         case .designTokenTypes:
             DesignTokenCatalogView(page: .typeAndMetrics)
+        case .illustrations:
+            IllustrationCatalogView()
         }
     }
 }
