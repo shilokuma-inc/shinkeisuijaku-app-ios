@@ -35,20 +35,36 @@ final class UserDefaultsAppDataStore: AppDataStore {
         "\(key).unreadable"
     }
 
+    /// 退避したデータ（古い順）
+    var unreadableBackups: [Data] {
+        defaults.array(forKey: unreadableBackupKey) as? [Data] ?? []
+    }
+
     func load() -> AppData {
         guard let data = defaults.data(forKey: key) else {
             return .initial
         }
-        // 新しい版のアプリが書いたデータは読める項目だけ読み、元のデータも残しておく（古い版に戻しても失わないため）
-        if let version = AppData.schemaVersion(of: data), version > AppData.currentSchemaVersion {
-            defaults.set(data, forKey: unreadableBackupKey)
+        // 読めない項目がある・新しい版のアプリが書いたデータは、読める項目だけ読み、元のデータも残しておく
+        // （次に保存すると、読めなかった項目が既定値で上書きされるため。古い版に戻しても失わないため）
+        let isNewerSchema = (AppData.schemaVersion(of: data) ?? 0) > AppData.currentSchemaVersion
+        if isNewerSchema || !AppData.isFullyReadable(data) {
+            keepUnreadable(data)
         }
         do {
             return try JSONDecoder().decode(AppData.self, from: data)
         } catch {
-            defaults.set(data, forKey: unreadableBackupKey)
             return .initial
         }
+    }
+
+    /// 読めなかったデータを退避する。前に退避したものは消さずに並べて残す（同じデータは 1 つだけ）
+    private func keepUnreadable(_ data: Data) {
+        var backups = unreadableBackups
+        guard !backups.contains(data) else {
+            return
+        }
+        backups.append(data)
+        defaults.set(backups, forKey: unreadableBackupKey)
     }
 
     func save(_ data: AppData) {
@@ -91,7 +107,7 @@ enum AppDataStoreFactory {
     ) -> any AppDataStore {
         let isUnitTestHost = environment["XCTestConfigurationFilePath"] != nil
         let isUITesting = arguments.contains(uiTestingArgument)
-        let isScreenshotDemo = arguments.contains("-screenshot-demo")
+        let isScreenshotDemo = arguments.contains(ScreenshotDemo.argument)
         if isUnitTestHost || isUITesting || isScreenshotDemo {
             return InMemoryAppDataStore()
         }

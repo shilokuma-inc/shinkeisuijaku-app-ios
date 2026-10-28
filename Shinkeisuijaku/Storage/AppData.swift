@@ -44,8 +44,14 @@ extension AppData: Codable {
         let initial = AppData.initial
         ownedStampIDs = (try? container.decodeIfPresent([String].self, forKey: .ownedStampIDs)) ?? initial.ownedStampIDs
         hasPassCache = (try? container.decodeIfPresent(Bool.self, forKey: .hasPassCache)) ?? initial.hasPassCache
-        lastCourse = (try? container.decodeIfPresent(Course.self, forKey: .lastCourse)) ?? initial.lastCourse
-        lastDifficulty = (try? container.decodeIfPresent(Difficulty.self, forKey: .lastDifficulty)) ?? initial.lastDifficulty
+        if let course = try? container.decodeIfPresent(Course.self, forKey: .lastCourse) {
+            lastCourse = course
+            lastDifficulty = (try? container.decodeIfPresent(Difficulty.self, forKey: .lastDifficulty)) ?? initial.lastDifficulty
+        } else {
+            // コースが読めないときは難易度も既定値にする（遊んだことのない組み合わせで始めないため）
+            lastCourse = initial.lastCourse
+            lastDifficulty = initial.lastDifficulty
+        }
         hasClearedOnce = (try? container.decodeIfPresent(Bool.self, forKey: .hasClearedOnce)) ?? initial.hasClearedOnce
     }
 
@@ -57,6 +63,20 @@ extension AppData: Codable {
         try container.encode(lastCourse, forKey: .lastCourse)
         try container.encode(lastDifficulty, forKey: .lastDifficulty)
         try container.encode(hasClearedOnce, forKey: .hasClearedOnce)
+    }
+
+    /// すべての項目を読めるか（欠けている項目はよい）。読めない項目があれば、保存の入れ物が元のデータを退避する
+    /// （`init(from:)` はその項目を既定値にするので、次の保存で元の値が消えてしまうため）
+    static func isFullyReadable(_ data: Data) -> Bool {
+        struct Strict: Decodable {
+            let schemaVersion: Int?
+            let ownedStampIDs: [String]?
+            let hasPassCache: Bool?
+            let lastCourse: Course?
+            let lastDifficulty: Difficulty?
+            let hasClearedOnce: Bool?
+        }
+        return (try? JSONDecoder().decode(Strict.self, from: data)) != nil
     }
 
     /// 保存されている形の版（無ければ nil）。新しい版のアプリが書いたデータかを見分けるために使う
