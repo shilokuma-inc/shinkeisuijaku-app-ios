@@ -124,9 +124,24 @@ private struct CourseSelectDialogModifier: ViewModifier {
     }
 }
 
-#Preview {
-    ZStack {
-        HomeScreenshotDemoView()
-        CourseSelectDialogView(selection: CourseSelection(course: .hiragana), hasPass: false)
+/// 撮影モードのコース選択のダイアログ。1 回クリアした後のホームの上に、ひらがなのダイアログを出す（パスの購入前。保存はメモリ上だけで、擬似のストア）
+struct CourseSelectScreenshotDemoView: View {
+    @State private var flow: AppFlow = {
+        let store = InMemoryAppDataStore(data: AppData(lastCourse: .hiragana, hasClearedOnce: true))
+        let flow = AppFlow(
+            store: store,
+            passStore: PassStore(backend: FakePassStoreBackend(entitled: false), dataStore: store),
+            haptics: SilentHaptics()
+        )
+        flow.chooseCourse(.hiragana)
+        return flow
+    }()
+
+    var body: some View {
+        RootView(flow: flow)
     }
+}
+
+#Preview {
+    CourseSelectScreenshotDemoView()
 }
