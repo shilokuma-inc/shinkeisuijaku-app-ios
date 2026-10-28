@@ -76,7 +76,7 @@ struct ParentalGateView: View {
     /// 問題（「12 ＋ 7 ＝ ？」）
     private var questionView: some View {
         Text("\(gate.question.augend) ＋ \(gate.question.addend) ＝ ？")
-            .appFont(Typography.pairCountNumber)
+            .appFont(Typography.parentalGateNumber)
             .foregroundStyle(Palette.text)
             .accessibilityLabel(Text(verbatim: ParentalGateSpeech.question(gate.question)))
             .accessibilityIdentifier("parentalGate.question")
@@ -85,7 +85,7 @@ struct ParentalGateView: View {
     /// 入れている答え。何も入れていないときも高さを保つ（入れるたびに下のテンキーが動かないように）
     private var answerView: some View {
         Text(gate.input.isEmpty ? " " : gate.input.text)
-            .appFont(Typography.pairCountNumber)
+            .appFont(Typography.parentalGateNumber)
             .foregroundStyle(Palette.accent)
             .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
             .background(Palette.background, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
