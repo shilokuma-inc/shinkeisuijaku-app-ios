@@ -94,7 +94,9 @@ struct PlayView: View {
                 RoundedRectangle(cornerRadius: Metrics.pairCountCornerRadius)
                     .stroke(Palette.border, lineWidth: Metrics.borderWidth)
             }
-            .accessibilityElement(children: .combine)
+            // 数字と言葉を別々に読まないよう、札を 1 つにまとめて「ひらがな あと 4 ペア」と読む
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(verbatim: remainingPairsLabel))
             .accessibilityIdentifier("play.remainingPairs")
             Text(Self.explanation(for: session.course))
                 .appFont(Typography.body)
@@ -102,6 +104,11 @@ struct PlayView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
         }
+    }
+
+    /// 「あと◯ペア」の札の読み上げ（`PlayScreen.remainingPairsLabel`）
+    private var remainingPairsLabel: String {
+        PlayScreen.remainingPairsLabel(course: session.course, remainingPairs: session.remainingPairs)
     }
 
     /// ヒントとやめる
@@ -120,6 +127,7 @@ struct PlayView: View {
             }
             .buttonStyle(SurfaceButtonStyle())
             .disabled(!session.canShowHint)
+            .accessibilityHint(Text("うらの カードを すこしの あいだ ぜんぶ みせるよ"))
             .accessibilityIdentifier("play.hint")
             Button {
                 isConfirmingQuit = true
@@ -169,13 +177,18 @@ private struct CardGrid: View {
     }
 
     private func cardButton(_ card: Card, index: Int) -> some View {
-        Button {
+        let isFaceUp = session.isShowingFace(of: card)
+        // 読み上げは見えているものだけ。裏のカードは「うら」だけで、中身をラベル・値に出さない（識別子も位置の番号だけ）
+        let accessibility = CardAccessibility(face: card.face, isFaceUp: isFaceUp, isMatched: card.isMatched)
+        return Button {
             if session.flip(cardID: card.id) == .matched {
                 haptics.matched()
             }
         } label: {
-            CardView(face: card.face, isFaceUp: session.isShowingFace(of: card), isMatched: card.isMatched)
+            CardView(face: card.face, isFaceUp: isFaceUp, isMatched: card.isMatched)
         }
+        .accessibilityLabel(Text(verbatim: accessibility.label))
+        .accessibilityValue(Text(verbatim: accessibility.value ?? ""))
         .buttonStyle(.plain)
         // disabled にすると全部見せているあいだにカードが薄くなるので、押せないようにするだけにする
         .allowsHitTesting(!session.isInputLocked && !card.isFaceUp)
