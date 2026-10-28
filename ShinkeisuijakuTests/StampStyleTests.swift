@@ -14,11 +14,15 @@ struct StampStyleTests {
     /// 通常のスタンプの淡い地は、その絵の色から作る（絵の色の対応は引き継ぎブックの「絵の色」）
     @Test
     func regularStampWashFollowsThePictureColor() {
-        #expect(StampStyle.mainColor(of: .cat) == Palette.artGray)
-        #expect(StampStyle.mainColor(of: .apple) == Palette.artRed)
-        #expect(StampStyle.mainColor(of: .penguin) == Palette.artBlue)
-        #expect(StampStyle.mainColor(of: .strawberry) == Palette.artBerry)
-        #expect(StampStyle.mainColor(of: .bear) == Palette.artBrown)
+        let expected: [Picture: Color] = [
+            .cat: Palette.artGray, .dog: Palette.artTan, .rabbit: Palette.artPink, .panda: Palette.artDark,
+            .frog: Palette.artGreen, .chick: Palette.artYellow, .fox: Palette.artOrange, .penguin: Palette.artBlue,
+            .apple: Palette.artRed, .strawberry: Palette.artBerry, .bear: Palette.artBrown, .suika: Palette.artGreen,
+            .star: Palette.artYellow
+        ]
+        for picture in Picture.allCases {
+            #expect(StampStyle.mainColor(of: picture) == expected[picture], "\(picture)")
+        }
         #expect(Palette.stampWashOpacity > 0 && Palette.stampWashOpacity < 0.5, "淡い地")
     }
 
