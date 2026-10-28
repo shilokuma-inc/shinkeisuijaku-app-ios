@@ -28,6 +28,8 @@ enum ScreenshotDemo {
         case cards
         /// スタンプの部品の見本。App Store には出さない
         case stamps
+        /// プレイ画面（ひらがな・やさしい。2 組揃えて 1 枚めくった状態）
+        case play
     }
 
     /// 撮影モードで起動するときの起動引数

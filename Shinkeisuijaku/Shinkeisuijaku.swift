@@ -30,6 +30,8 @@ struct Shinkeisuijaku: App {
             CardCatalogView()
         case .stamps:
             StampCatalogView()
+        case .play:
+            PlayScreenshotDemoView()
         }
     }
 }
