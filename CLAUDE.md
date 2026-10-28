@@ -7,14 +7,15 @@
 小さな子ども（5 歳以下を中心）向けの神経衰弱アプリ **しんけいすいじゃく**（Bundle ID `jp.shilokuma.Shinkeisuijaku`）。
 仕様は Discussion #4「初期開発」（依頼 Issue #3）の添付の「仕様書（初版・現段階）」と「デザイン引き継ぎブック」にあり、Discussion のコメント欄で決めた答え（Q1〜Q8）がそれに優先する。
 
-- 仕様書と引き継ぎブックが食い違うところは、**引き継ぎブックに合わせる**（見た目・文言・寸法・色・秒数）。画面の構成・遷移・規則は仕様書に合わせる
+- 優先順位は **Discussion #4 の Q1〜Q8 の答え ＞ 引き継ぎブック ＞ 仕様書**。仕様書と引き継ぎブックが食い違うところは、何であっても引き継ぎブックに合わせる
+- 読むところ: 見た目・文言・寸法・色・秒数は引き継ぎブック、画面の構成・遷移・規則は仕様書（引き継ぎブックに書かれていないとき）
 - コースは「どうぶつ」（同じ絵のペア）と「ひらがな」（文字と絵のペア）。難易度は やさしい（6 ペア）・ふつう（8 ペア）・むずかしい（10 ペア）。カードは 4 列
 - 画面はホーム・プレイ・クリア・スタンプちょう・おうちの方への 5 つと、コース選択・保護者の確認のダイアログ
 - 最初の 1 回をクリアするまでは、起動するとすぐ どうぶつ・やさしい のゲームが始まる（ホームを通らない）。クリアした後は、起動するとホームから始まる
 - やさしいは無料。ふつう・むずかしいは ¥100 の買い切りパス（非消耗型 `jp.shilokuma.Shinkeisuijaku.pass`・StoreKit 2）で開放し、購入の復元に対応する
 - データ（スタンプ・購入状態のキャッシュ・前回のコースと難易度・初回クリア済みか）は端末内の `UserDefaults` だけに保存する。権利の正は StoreKit の `Transaction.currentEntitlements`
 
-方針（引き継ぎブックの「原則」）:
+方針（引き継ぎブックの「原則」。括弧の中は Discussion #4 の決定とゴールで足した決まり）:
 
 1. **広告を一切出さない**: 第三者の広告・分析ツール・クラッシュ収集・SDK を入れない（子ども向けカテゴリで出すため、今後も入れない）
 2. **急かさない**: タイマー・制限時間・めくった回数・ミスの表示を出さない（数えもしない）
@@ -27,7 +28,8 @@
 ## 環境
 
 - Xcode 26.6 / iOS 17.0 以上（iOS 18 以降の API は `if #available` で囲む）
-- iPhone と iPad のユニバーサル（`TARGETED_DEVICE_FAMILY = "1,2"`）・縦向き・ライトとダーク
+- iPhone と iPad のユニバーサル（`TARGETED_DEVICE_FAMILY = "1,2"`）・ライトとダーク
+- 向きは iPhone が縦だけ、iPad が縦と逆さの縦だけ（`UIRequiresFullScreen = YES`）。開発言語は `ja`
 - Swift 6（言語モード 6・Strict Concurrency complete・既定の分離は MainActor。UI テストのターゲットだけ nonisolated）
 - SwiftUI・`@Observable` / Swift Testing（Unit）/ XCTest（UI テスト）/ SwiftLint 0.65.1（Build Tool Plugin と CI の `--strict`）
 - SPM のパッケージは SwiftLint のプラグインだけ。ほかのパッケージは足さない
@@ -48,15 +50,16 @@ xcodebuild test -project Shinkeisuijaku.xcodeproj -scheme Shinkeisuijaku \
 
 - `-skipPackagePluginValidation -skipMacroValidation` を付けないと、Xcode の GUI で信頼していない DerivedData では SwiftLint のプラグインで止まる
 - `xcode-select` が CommandLineTools を指している Mac では、`DEVELOPER_DIR=/Applications/<Xcode>.app/Contents/Developer` を付けて実行する
-- CI（`.github/workflows/build.yml`）は SwiftLint と Unit テストだけを回す。UI テストは手元で流す
+- CI（`.github/workflows/build.yml`）は、作業ブランチへの push と `epic/**` 宛ての PR では SwiftLint と Unit テストだけを回す（`epic/**` 宛ての PR のイベントではジョブ自体が動かない）。
+  UI テストは `epic/**` 以外を宛先にした PR（`epic/**` から `develop` への最終 PR は更新のたびにも）と `develop`・`main`・`release/**` への push で回る。ループの子 PR では UI テストを手元で流す
 - テストの import は `@testable` を無視したアルファベット順（`import Foundation` → `@testable import Shinkeisuijaku` → `import Testing`）。SwiftLint の `sorted_imports` が `--strict` で落とす
 - 撮影モード: `-screenshot-demo -screenshot-scene <scene>` の起動引数で、`Shinkeisuijaku/Screenshot/ScreenshotDemo.swift` の画面をデモデータで開く。
   `ScreenshotDemo.Scene` は `enum Scene: String {` の形（1 行 1 case）を保つ（`Tools/app_store_config.py` が正規表現で読む）。App Store に出す画面は `AppStore/screenshots.json` で決める
 
 ## プロジェクトの決まり
 
-- **`project.pbxproj` を編集しない。** フォルダ同期グループ（objectVersion 77）なので、`Shinkeisuijaku/`・`ShinkeisuijakuTests/`・`ShinkeisuijakuUITests/` にファイルを足すだけでターゲットに入る。
-  既存のビルド設定の値の書き換え以外（SPM のパッケージ・ビルド構成・ビルドフェーズ・ターゲット・ファイル参照の追加）が要るときは、人間に頼む
+- **`project.pbxproj` は、既存のビルド設定の値の書き換え（向き・`INFOPLIST_KEY_*` など）だけ許す。** フォルダ同期グループ（objectVersion 77）なので、`Shinkeisuijaku/`・`ShinkeisuijakuTests/`・`ShinkeisuijakuUITests/` にファイルを足すだけでターゲットに入る。
+  それ以外（SPM のパッケージ・ビルド構成・ビルドフェーズ・ターゲット・ファイル参照の追加）が要るときは、人間に頼む。書き換えたら `plutil -lint` とビルドで確かめる
 - バージョン・Bundle ID・Deployment Target・Team ID は `Configs/Project.xcconfig` に書く（pbxproj に直接書かない）
 - `Shinkeisuijaku/` の下に置いたファイルはすべてアプリに入る。StoreKit Configuration ファイル（`.storekit`）・entitlements・SVG の原本・変換のスクリプトは `Shinkeisuijaku/` の外（リポジトリ直下・`Configs/`・`Tools/`・`docs/`）に置く
 - StoreKit・`UserDefaults`・振動・乱数・時間は protocol の後ろに置き、テスト・UI テスト・撮影モードでは差し替える（実際の `UserDefaults` と StoreKit を使わない）
@@ -72,12 +75,12 @@ xcodebuild test -project Shinkeisuijaku.xcodeproj -scheme Shinkeisuijaku \
 3. **並行性**: Swift 6 の警告を `@unchecked Sendable`・`nonisolated(unsafe)` で消していないか。`Transaction.updates` の購読などの `Task` が持ち主の寿命で cancel されるか・循環参照しないか。
    テストが固定時間の `Task.sleep` で待っていないか（時計・待ち時間を注入する）
 4. **保存と課金の正しさ**: 保存の形に版があり、読めないデータでも既定値で起動するか（クラッシュしない・捨てない）。権利の正が StoreKit か（端末内の値はキャッシュだけ）。
-   `purchase()` の結果（成功・保留・キャンセル・検証の失敗）と復元・返金を扱っているか。スタンプのもらい方が Q7 のとおりか（1 回のクリアで 1 つまで）
+   `purchase()` の結果（成功・保留・キャンセル・検証の失敗）と復元・返金を扱っているか。スタンプのもらい方が Q7 のとおりか（パス専用のスタンプはコース × 難易度（ふつう・むずかしい）ごとのはじめての 1 回だけ、2 回目からは通常。1 回のクリアで 1 つまで）
 5. **テスト**: ゲームの規則・スタンプのもらい方・保護者の確認の問題・権利の判定を、View から切り離した値の型と純粋な関数にし、Swift Testing（`@Test`・`#expect`・`#require`）でテストしているか。乱数と時刻を注入しているか
 6. **子ども向けの決まり**: 広告・分析・第三者の SDK・通信・アカウントを入れていないか。外部のリンク・購入・設定が保護者の確認のあとだけか。子ども向けの画面の文字がひらがなか。
    タイマー・回数・ミス・× 表示・警告音・起動時や遊んでいる途中の購入の案内を出していないか
-7. **アクセシビリティ**: **裏のカードの中身（絵や文字）をラベル・値・ヒントに出していないか**（VoiceOver で答えが分かってしまう）。アイコンだけのボタンにラベルがあるか。
-   「視差効果を減らす」でめくり・ふくらみ・クリアの動きを止めるか。タップ領域が 44pt 以上か。文字を最大にしても切れないか。iPhone SE（第 3 世代）でプレイ画面がスクロールなしで収まるか
+7. **アクセシビリティ**: カードと「あと◯ペア」を VoiceOver で読み上げられるか。ただし**裏のカードの中身（絵や文字）をラベル・値・ヒントに出していないか**（VoiceOver で答えが分かってしまう）。アイコンだけのボタンにラベルがあるか。色だけに頼らず言葉でも示しているか。
+   「視差効果を減らす」がオンのとき、めくりとふくらみを控えめにしているか（ループのゴールでは、回転とふくらみ・クリアの動きを止めて切り替えるだけにする）。タップ領域が 44pt 以上か。文字を最大にしても切れないか。iPhone SE（第 3 世代）でプレイ画面がスクロールなしで収まるか
 
 <!--
 このブロックをリポジトリの CLAUDE.md に貼り付ける。CLAUDE.md は毎セッション自動で読み込まれるため、
