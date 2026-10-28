@@ -63,6 +63,8 @@ enum Typography {
     static let note = TypographyToken(size: 12, face: .system(.regular), relativeTo: .caption)
     /// 小さな注記の強いもの（12・700。色は補助の文字）
     static let noteStrong = TypographyToken(size: 12, face: .system(.bold), relativeTo: .caption)
+    /// おうちの方への画面のまとまりの見出し（引き継ぎブックに無いので、「あと◯ペア」の文字と同じ 17・800 にした）
+    static let parentsSectionTitle = TypographyToken(size: 17, face: .system(.heavy), relativeTo: .headline)
 
     // カードの文字は、カードの短辺に対する割合で大きさを決める
     /// ひらがなカードの文字（短辺の 66%・丸ゴ）

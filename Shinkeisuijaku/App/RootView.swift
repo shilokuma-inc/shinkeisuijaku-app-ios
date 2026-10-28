@@ -24,17 +24,19 @@ struct RootView: View {
                 onPlay: flow.play,
                 onChooseCourse: flow.chooseCourse,
                 onOpenStampBook: flow.openStampBook,
-                // おうちの方へ（タスク 18）ができたらつなぐ
-                onOpenParents: {}
+                onOpenParents: flow.openParents
             )
             .toolbar(.hidden, for: .navigationBar)
             .courseSelectDialog(flow: flow)
+            .parentalGateDialog(flow: flow)
             .navigationDestination(for: AppFlow.Destination.self) { destination in
                 switch destination {
                 case .game:
                     gameScreen
                 case .stampBook:
                     stampBookScreen
+                case .parents:
+                    parentsScreen
                 }
             }
         }
@@ -70,6 +72,13 @@ struct RootView: View {
     /// スタンプちょう。戻るのは「ホームにもどる」だけ（仕様書の遷移先はホーム。クリアから開いたときもホームへ）
     private var stampBookScreen: some View {
         StampBookView(layout: flow.stampBookLayout, onHome: flow.goHome)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarBackButtonHidden()
+    }
+
+    /// おうちの方への画面。戻るのは「ホームにもどる」だけ（仕様書の遷移先はホーム）
+    private var parentsScreen: some View {
+        ParentsView(passStore: flow.passStore, onHome: flow.goHome)
             .toolbar(.hidden, for: .navigationBar)
             .navigationBarBackButtonHidden()
     }

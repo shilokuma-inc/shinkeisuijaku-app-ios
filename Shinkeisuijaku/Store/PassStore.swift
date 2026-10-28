@@ -72,6 +72,8 @@ final class PassStore {
     @ObservationIgnored private let backend: any PassStoreBackend
     @ObservationIgnored private let dataStore: any AppDataStore
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
+    /// 値段を読み直している途中の処理（重ねて読まないため。`stop()` で止める）
+    @ObservationIgnored private var priceTask: Task<Void, Never>?
     /// 権利の確認を読み始めるたびに進める番号
     @ObservationIgnored private var latestCheck = 0
     /// 権利に使った確認の番号。これより前に読み始めた確認の結果は古いので捨てる（購入で権利を付けたら、それまでの確認をすべて古くする）
@@ -83,21 +85,51 @@ final class PassStore {
         hasPass = dataStore.load().hasPassCache
     }
 
-    /// 取引の変化の購読を始め、値段と権利を読む（起動時に 1 回呼ぶ）
+    /// 取引の変化の購読を始め、値段と権利を読む（起動時に 1 回呼ぶ）。値段は待たずに読み始め、権利を確かめたら戻る
     func start() async {
         startObservingTransactions()
-        // 権利の確認を値段の読み込み（通信）に待たせないよう、権利を先に確かめる（値段はその中で、まだ無ければ読む）
         await refreshEntitlement()
     }
 
-    /// 取引の変化の購読を止める（ストアを捨てるとき）
+    /// 取引の変化の購読と、値段の読み直しを止める（ストアを捨てるとき）
     func stop() {
         updatesTask?.cancel()
         updatesTask = nil
+        priceTask?.cancel()
+        priceTask = nil
     }
 
-    /// StoreKit で権利を確かめ直し、端末内のキャッシュも合わせる（起動時と前面に戻ったとき）
+    /// StoreKit で権利を確かめ直し、端末内のキャッシュも合わせる（起動時と前面に戻ったとき）。
+    /// 値段がまだ無ければ読み直しも始めるが、その終わり（通信）は待たない
     func refreshEntitlement() async {
+        reloadPriceIfMissing()
+        await checkEntitlement()
+    }
+
+    /// 値段がまだ無ければ（起動時に読めなかったとき）、読み直しを始める。読み終わりは待たない（読めたら `displayPrice` が変わる）。
+    /// 読み直している途中なら、重ねて読まない
+    func reloadPriceIfMissing() {
+        guard displayPrice == nil, priceTask == nil else {
+            return
+        }
+        priceTask = Task { [weak self] in
+            guard let backend = self?.backend else {
+                return
+            }
+            let price = await backend.loadDisplayPrice()
+            // stop() の後に読み終わっても、値段は変えない（読めなかったとき（nil）は、次に呼ばれたときに読み直す）
+            guard let self, !Task.isCancelled else {
+                return
+            }
+            priceTask = nil
+            if displayPrice == nil {
+                displayPrice = price
+            }
+        }
+    }
+
+    /// StoreKit で権利だけを確かめ、端末内のキャッシュも合わせる（復元と取引の変化。値段の読み込みは待たない）
+    private func checkEntitlement() async {
         latestCheck += 1
         let check = latestCheck
         let entitled = await backend.hasEntitlement()
@@ -105,10 +137,6 @@ final class PassStore {
         if check > appliedCheck {
             appliedCheck = check
             setHasPass(entitled)
-        }
-        if displayPrice == nil {
-            // 起動時に値段を読めなかったときは、ここで読み直す
-            displayPrice = await backend.loadDisplayPrice()
         }
     }
 
@@ -139,7 +167,8 @@ final class PassStore {
         guard await backend.sync() else {
             return .failed
         }
-        await refreshEntitlement()
+        // 値段の読み込み（通信）を待つと、そのあいだ isBusy が残ってボタンを押せないので、権利だけを確かめる
+        await checkEntitlement()
         return hasPass ? .restored : .notFound
     }
 
@@ -154,7 +183,7 @@ final class PassStore {
                 guard let self, !Task.isCancelled else {
                     return
                 }
-                await self.refreshEntitlement()
+                await self.checkEntitlement()
             }
         }
     }
@@ -191,6 +220,15 @@ final class FakePassStoreBackend: PassStoreBackend {
         heldChecks.count
     }
     private var heldChecks: [CheckedContinuation<Void, Never>] = []
+    /// 値段の読み込みを止めておくか（テストで、値段の読み込み（通信）が終わらないあいだを再現するため）
+    var holdsPriceLoads = false
+    /// 止めている値段の読み込みの数
+    var heldPriceLoadCount: Int {
+        heldPriceLoads.count
+    }
+    private var heldPriceLoads: [CheckedContinuation<Void, Never>] = []
+    /// 読み終わった値段の読み込みの数
+    private(set) var finishedPriceLoadCount = 0
     /// 購入を止めておくか（テストで、購入中の二重押しを再現するため）
     var holdsPurchase = false
     private var heldPurchase: CheckedContinuation<Void, Never>?
@@ -200,7 +238,18 @@ final class FakePassStoreBackend: PassStoreBackend {
     }
 
     func loadDisplayPrice() async -> String? {
-        displayPrice
+        if holdsPriceLoads {
+            await withCheckedContinuation { heldPriceLoads.append($0) }
+        }
+        finishedPriceLoadCount += 1
+        return displayPrice
+    }
+
+    /// 止めている値段の読み込みを進める
+    func releasePriceLoads() {
+        let loads = heldPriceLoads
+        heldPriceLoads = []
+        loads.forEach { $0.resume() }
     }
 
     func purchase() async -> PassPurchaseResult {

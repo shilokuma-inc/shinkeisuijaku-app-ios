@@ -43,14 +43,23 @@ struct DialogContainer<Content: View>: View {
     }
 }
 
-/// 主なボタン（強調色の地・文字は強調の上の文字の色・角丸 14・高さ 52・文字は 15 の 800）
+/// 主なボタン（強調色の地・文字は強調の上の文字の色・角丸 14・高さ 52・文字は 15 の 800）。押しているあいだと押せないときは薄くする
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .appFont(Typography.primaryButton)
-            .foregroundStyle(Palette.accentText)
-            .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
-            .background(Palette.accent, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
-            .opacity(configuration.isPressed ? Metrics.pressedOpacity : 1)
+        PrimaryButton(configuration: configuration)
+    }
+
+    private struct PrimaryButton: View {
+        let configuration: Configuration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .appFont(Typography.primaryButton)
+                .foregroundStyle(Palette.accentText)
+                .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
+                .background(Palette.accent, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
+                .opacity(configuration.isPressed || !isEnabled ? Metrics.pressedOpacity : 1)
+        }
     }
 }

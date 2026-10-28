@@ -139,4 +139,14 @@ enum Metrics {
     static let artCanvasSize: CGFloat = 108
     /// 絵の輪郭線の太さ（枠が `artCanvasSize` のときの値。色は `Palette.artOutline`）
     static let artOutlineWidth: CGFloat = 2.2
+
+    // おうちの方への画面（引き継ぎブックに見本も値も無いので、ほかの画面の値に合わせて決めた）
+    /// まとまり（見出し・パス・方針・リンク）どうしのすき間（スタンプちょうのまとまりと同じ）
+    static let parentsSectionSpacing: CGFloat = 16
+    /// まとまりの箱の内側の余白（ホーム・スタンプちょうの左右の余白と同じ）
+    static let parentsSectionPadding: CGFloat = screenHorizontalPadding
+    /// まとまりの箱の角丸（通常のボタンと同じ）
+    static let parentsSectionCornerRadius: CGFloat = buttonCornerRadius
+    /// 箇条書きの印と文のすき間
+    static let parentsBulletSpacing: CGFloat = 4
 }

@@ -22,6 +22,20 @@ struct ParentalGateTests {
         }
     }
 
+    /// 足される数が 98 のときは、答えを 99 までに収めるため足す数は 1 だけになる（足される数の上限の境界）
+    @Test
+    func largestAugendGetsAddendOne() throws {
+        var generator = SeededRandomNumberGenerator(seed: 98)
+        // 足される数は 89 通りなので、この回数を引けば 98 は何度も出る（種を固定しているので、毎回同じ問題の並び）
+        let questions = (0..<5_000).map { _ in ParentalGateQuestion.make(using: &generator) }
+        let largest = questions.filter { $0.augend == ParentalGateQuestion.augendRange.upperBound }
+        try #require(!largest.isEmpty, "足される数が 98 の問題が出ていない")
+        #expect(ParentalGateQuestion.augendRange.upperBound == 98)
+        #expect(largest.allSatisfy { $0.addend == 1 && $0.answer == ParentalGateQuestion.maxAnswer })
+        // 境界の 1 つ手前（97）では、足す数は 1 と 2 のどちらか
+        #expect(questions.filter { $0.augend == 97 }.allSatisfy { (1...2).contains($0.addend) })
+    }
+
     /// 同じ種なら同じ問題を作る（撮影モードで種を固定できる）
     @Test
     func sameSeedMakesSameQuestion() {

@@ -52,13 +52,15 @@ struct ParentalGateView: View {
                 .fixedSize(horizontal: false, vertical: true)
             questionView
             answerView
-            if gate.showsWrongNotice {
-                Text("答えが違います。別の問題に変わりました。")
-                    .appFont(Typography.noteStrong)
-                    .foregroundStyle(Palette.text)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier("parentalGate.wrongNotice")
-            }
+            // 行の高さはいつも取り、出さないときは見えなくするだけにする（出入りのたびに下のテンキーが上下に動かないように）
+            Text("答えが違います。別の問題に変わりました。")
+                .appFont(Typography.noteStrong)
+                .foregroundStyle(Palette.text)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .opacity(gate.showsWrongNotice ? 1 : 0)
+                .accessibilityHidden(!gate.showsWrongNotice)
+                .accessibilityIdentifier("parentalGate.wrongNotice")
             keypad
             Button(action: onCancel) {
                 Text("やめる")
