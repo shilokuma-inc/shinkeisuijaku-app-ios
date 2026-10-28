@@ -44,6 +44,11 @@ final class GatedClock: GameClock {
         await withCheckedContinuation { watchers.append($0) }
     }
 
+    /// 止まっている `sleep` も、それを待つ人もいないか（テストの終わりに、待ちが残っていないことを確かめる）
+    var isIdle: Bool {
+        sleepers.isEmpty && watchers.isEmpty
+    }
+
     /// 止まっている `sleep` をすべて進める
     func advance() {
         let waking = sleepers
@@ -52,6 +57,8 @@ final class GatedClock: GameClock {
     }
 }
 
+/// 待ち時間で止まったまま終わらないテストを、CI のタイムアウトより先に落とす
+@Suite(.timeLimit(.minutes(1)))
 struct GameSessionTests {
     /// テスト用の秒数。どの待ち時間かを見分けられるよう、すべて違う値にする
     private let timing = GameTiming(
@@ -68,19 +75,26 @@ struct GameSessionTests {
         clock: any GameClock
     ) -> GameSession {
         var generator = SeededRandomNumberGenerator(seed: 7)
-        let board = GameDealer.deal(course: course, difficulty: difficulty, using: &generator)
         return GameSession(
             course: course,
             difficulty: difficulty,
             isBeforeFirstClear: isBeforeFirstClear,
-            board: board,
             timing: timing,
-            clock: clock
+            clock: clock,
+            using: &generator
         )
     }
 
     private func pairs(of session: GameSession) -> [[Card]] {
         Dictionary(grouping: session.board.cards, by: \.pairID).values.sorted { $0[0].pairID < $1[0].pairID }
+    }
+
+    /// 始めに全部見せるのを終わらせて、めくれる状態にする
+    private func startPlaying(_ session: GameSession, clock: GatedClock) async {
+        session.start()
+        await clock.waitUntilSleeping()
+        clock.advance()
+        await session.waitForPendingWork()
     }
 
     /// アプリで使う秒数は、引き継ぎブックの「動き」の値
@@ -96,6 +110,14 @@ struct GameSessionTests {
         #expect(standard.clearDialogDelay == 1.1)
     }
 
+    /// 難易度のペアの数だけ配ってある
+    @Test
+    func sessionDealsCardsForTheDifficulty() {
+        let session = makeSession(.hiragana, .hard, clock: ImmediateClock())
+        #expect(session.board.cards.count == 20)
+        #expect(session.remainingPairs == 10)
+    }
+
     // MARK: - 始めに全部見せる
 
     /// 始めに全部のカードを見せ、そのあいだは押せない。時間がたつとめくれるようになる
@@ -104,14 +126,16 @@ struct GameSessionTests {
         let clock = GatedClock()
         let session = makeSession(.animals, .normal, clock: clock)
         #expect(session.phase == .ready)
-        let starting = Task { await session.start() }
+        session.start()
         await clock.waitUntilSleeping()
         #expect(session.phase == .revealingAll)
         #expect(session.isInputLocked)
         #expect(session.board.cards.allSatisfy { session.isShowingFace(of: $0) })
-        #expect(await session.flip(cardID: 0) == .ignored)
+        #expect(session.flip(cardID: 0) == .ignored)
+        session.start()
+        #expect(clock.requested == [8], "全部見せているあいだにもう一度 start しても、待ち直さない")
         clock.advance()
-        await starting.value
+        await session.waitForPendingWork()
         #expect(session.phase == .playing)
         #expect(!session.isInputLocked)
         #expect(session.board.cards.allSatisfy { !session.isShowingFace(of: $0) })
@@ -123,7 +147,8 @@ struct GameSessionTests {
     func startBeforeFirstClearUsesLongerReveal() async {
         let clock = ImmediateClock()
         let session = makeSession(.animals, .easy, isBeforeFirstClear: true, clock: clock)
-        await session.start()
+        session.start()
+        await session.waitForPendingWork()
         #expect(clock.requested == [4.8])
         #expect(session.phase == .playing)
     }
@@ -134,26 +159,24 @@ struct GameSessionTests {
     @Test
     func mismatchLocksInputUntilCardsTurnBack() async {
         let clock = GatedClock()
-        let gated = makeSession(clock: clock)
-        let starting = Task { await gated.start() }
-        await clock.waitUntilSleeping()
-        clock.advance()
-        await starting.value
+        let session = makeSession(clock: clock)
+        await startPlaying(session, clock: clock)
 
-        let all = pairs(of: gated)
-        #expect(await gated.flip(cardID: all[0][0].id) == .firstCard)
-        let flipping = Task { await gated.flip(cardID: all[1][0].id) }
+        let all = pairs(of: session)
+        #expect(session.flip(cardID: all[0][0].id) == .firstCard)
+        #expect(session.flip(cardID: all[1][0].id) == .mismatched, "結果は待たずにすぐ返る")
         await clock.waitUntilSleeping()
-        #expect(gated.phase == .resolvingMismatch)
-        #expect(gated.isInputLocked)
-        #expect(!gated.canShowHint)
-        #expect(gated.board.unmatchedFaceUpCards.count == 2)
-        #expect(await gated.flip(cardID: all[2][0].id) == .ignored)
+        #expect(session.phase == .resolvingMismatch)
+        #expect(session.isInputLocked)
+        #expect(session.board.unmatchedFaceUpCards.count == 2)
+        #expect(session.flip(cardID: all[2][0].id) == .ignored)
+        session.showHint()
+        #expect(session.phase == .resolvingMismatch, "ハズレを待つあいだはヒントも効かない")
         clock.advance()
-        #expect(await flipping.value == .mismatched)
-        #expect(gated.phase == .playing)
-        #expect(gated.board.unmatchedFaceUpCards.isEmpty)
-        #expect(clock.requested.last == 0.9)
+        await session.waitForPendingWork()
+        #expect(session.phase == .playing)
+        #expect(session.board.unmatchedFaceUpCards.isEmpty)
+        #expect(clock.requested == [6, 0.9])
     }
 
     /// ペアが揃うとすぐに次をめくれる（待たない）
@@ -161,10 +184,11 @@ struct GameSessionTests {
     func matchDoesNotWait() async {
         let clock = ImmediateClock()
         let session = makeSession(clock: clock)
-        await session.start()
+        session.start()
+        await session.waitForPendingWork()
         let pair = pairs(of: session)[0]
-        #expect(await session.flip(cardID: pair[0].id) == .firstCard)
-        #expect(await session.flip(cardID: pair[1].id) == .matched)
+        #expect(session.flip(cardID: pair[0].id) == .firstCard)
+        #expect(session.flip(cardID: pair[1].id) == .matched)
         #expect(session.phase == .playing)
         #expect(session.remainingPairs == 5)
         #expect(clock.requested == [6])
@@ -177,31 +201,44 @@ struct GameSessionTests {
     func hintShowsAllCardsAndCanRepeat() async {
         let clock = GatedClock()
         let session = makeSession(clock: clock)
-        let starting = Task { await session.start() }
-        await clock.waitUntilSleeping()
-        clock.advance()
-        await starting.value
+        await startPlaying(session, clock: clock)
 
         for _ in 0..<3 {
-            let hinting = Task { await session.showHint() }
+            session.showHint()
             await clock.waitUntilSleeping()
             #expect(session.phase == .hinting)
             #expect(session.board.cards.allSatisfy { session.isShowingFace(of: $0) })
-            #expect(await session.flip(cardID: 0) == .ignored)
+            #expect(session.flip(cardID: 0) == .ignored)
             clock.advance()
-            await hinting.value
+            await session.waitForPendingWork()
             #expect(session.phase == .playing)
             #expect(session.board.cards.allSatisfy { !session.isShowingFace(of: $0) })
         }
         #expect(clock.requested == [6, 1.1, 1.1, 1.1])
     }
 
-    /// 始まる前と全部見せているあいだは、ヒントを押しても何も起きない
+    /// 1 枚めくってからヒントを使っても、そのカードは表のままで、続けて 2 枚目をめくれる
     @Test
-    func hintIsIgnoredBeforePlaying() async {
+    func hintKeepsTheFirstCardFaceUp() async {
+        let clock = GatedClock()
+        let session = makeSession(clock: clock)
+        await startPlaying(session, clock: clock)
+        let pair = pairs(of: session)[0]
+        #expect(session.flip(cardID: pair[0].id) == .firstCard)
+        session.showHint()
+        await clock.waitUntilSleeping()
+        clock.advance()
+        await session.waitForPendingWork()
+        #expect(session.board.unmatchedFaceUpCards.map(\.id) == [pair[0].id])
+        #expect(session.flip(cardID: pair[1].id) == .matched)
+    }
+
+    /// 始まる前は、ヒントを押しても何も起きない
+    @Test
+    func hintIsIgnoredBeforePlaying() {
         let clock = ImmediateClock()
         let session = makeSession(clock: clock)
-        await session.showHint()
+        session.showHint()
         #expect(session.phase == .ready)
         #expect(clock.requested.isEmpty)
     }
@@ -213,26 +250,74 @@ struct GameSessionTests {
     func matchingAllPairsClearsAfterDelay() async {
         let clock = GatedClock()
         let session = makeSession(.hiragana, .easy, clock: clock)
-        let starting = Task { await session.start() }
-        await clock.waitUntilSleeping()
-        clock.advance()
-        await starting.value
+        await startPlaying(session, clock: clock)
 
-        let all = pairs(of: session)
-        for pair in all.dropLast() {
-            _ = await session.flip(cardID: pair[0].id)
-            _ = await session.flip(cardID: pair[1].id)
+        for pair in pairs(of: session) {
+            #expect(session.flip(cardID: pair[0].id) == .firstCard)
+            #expect(session.flip(cardID: pair[1].id) == .matched)
         }
-        let last = all[all.count - 1]
-        _ = await session.flip(cardID: last[0].id)
-        let finishing = Task { await session.flip(cardID: last[1].id) }
         await clock.waitUntilSleeping()
         #expect(session.phase == .finishing)
         #expect(session.remainingPairs == 0)
         #expect(session.isInputLocked)
         clock.advance()
-        #expect(await finishing.value == .matched)
+        await session.waitForPendingWork()
         #expect(session.phase == .cleared)
         #expect(clock.requested == [6, 1.3])
+    }
+
+    // MARK: - やめる
+
+    /// 揃えた直後（クリアのダイアログを待つあいだ）にやめたら、クリアにしない
+    @Test
+    func quitWhileFinishingNeverClears() async {
+        let clock = GatedClock()
+        let session = makeSession(clock: clock)
+        await startPlaying(session, clock: clock)
+        for pair in pairs(of: session) {
+            session.flip(cardID: pair[0].id)
+            session.flip(cardID: pair[1].id)
+        }
+        await clock.waitUntilSleeping()
+        #expect(session.phase == .finishing)
+        session.quit()
+        clock.advance()
+        await session.waitForPendingWork()
+        #expect(session.phase == .quit)
+    }
+
+    /// 全部見せている・ハズレを待つ・ヒントのあいだにやめても、めくれる状態に戻らない
+    @Test
+    func quitStopsEveryWait() async {
+        let clock = GatedClock()
+        let revealing = makeSession(clock: clock)
+        revealing.start()
+        await clock.waitUntilSleeping()
+        revealing.quit()
+        clock.advance()
+        await revealing.waitForPendingWork()
+        #expect(revealing.phase == .quit)
+
+        let mismatching = makeSession(clock: clock)
+        await startPlaying(mismatching, clock: clock)
+        let all = pairs(of: mismatching)
+        mismatching.flip(cardID: all[0][0].id)
+        mismatching.flip(cardID: all[1][0].id)
+        await clock.waitUntilSleeping()
+        mismatching.quit()
+        clock.advance()
+        await mismatching.waitForPendingWork()
+        #expect(mismatching.phase == .quit)
+        #expect(mismatching.flip(cardID: all[2][0].id) == .ignored)
+
+        let hinting = makeSession(clock: clock)
+        await startPlaying(hinting, clock: clock)
+        hinting.showHint()
+        await clock.waitUntilSleeping()
+        hinting.quit()
+        clock.advance()
+        await hinting.waitForPendingWork()
+        #expect(hinting.phase == .quit)
+        #expect(clock.isIdle)
     }
 }
