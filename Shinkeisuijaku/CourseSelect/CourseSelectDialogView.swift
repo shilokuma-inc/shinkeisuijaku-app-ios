@@ -67,26 +67,31 @@ private struct CourseDifficultyButton: View {
     let reservesLockSpace: Bool
     let action: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Metrics.cardSpacing) {
-                Text(option.difficulty.name)
-                    .appFont(Typography.difficultyButton)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Metrics.cardSpacing)
-                Text(option.pairsText)
-                    .appFont(Typography.difficultyPairs)
-                    .fixedSize(horizontal: false, vertical: true)
-                if option.isLocked {
-                    LockShape()
-                        // 鍵のマークはボタンの文字と同じ色（引き継ぎブックの 6 ページの見本の「8ペア」と同じ濃さ。コース選択とクリアでそろえる）
-                        .fill(Palette.text)
-                        .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityLabel("かぎ")
-                } else if reservesLockSpace {
-                    Color.clear
-                        .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
-                        .accessibilityHidden(true)
+            Group {
+                if TextSizeLayout.stacksVertically(dynamicTypeSize) {
+                    // 文字を大きくしたとき（アクセシビリティの大きさ）は、難易度名が途中で折り返さないよう、「6ペア」と鍵を下の行にする
+                    VStack(alignment: .leading, spacing: 0) {
+                        name
+                            .lineLimit(1)
+                            .minimumScaleFactor(Metrics.textMinimumScale)
+                        HStack(spacing: Metrics.cardSpacing) {
+                            pairs
+                            lock
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, Metrics.pairCountVerticalPadding)
+                } else {
+                    HStack(spacing: Metrics.cardSpacing) {
+                        name
+                        Spacer(minLength: Metrics.cardSpacing)
+                        pairs
+                        lock
+                    }
                 }
             }
             .padding(.horizontal, Metrics.difficultyButtonHorizontalPadding)
@@ -97,6 +102,33 @@ private struct CourseDifficultyButton: View {
         .accessibilityLabel(Text(verbatim: option.accessibilityLabel))
         .accessibilityHint(Text(verbatim: option.accessibilityHint ?? ""))
         .accessibilityIdentifier("courseSelect.difficulty.\(option.difficulty.rawValue)")
+    }
+
+    /// 難易度名（18・800）
+    private var name: some View {
+        Text(option.difficulty.name)
+            .appFont(Typography.difficultyButton)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// 右の小さな「6ペア」（12・700）
+    private var pairs: some View {
+        Text(option.pairsText)
+            .appFont(Typography.difficultyPairs)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// 鍵のマーク。鍵が無くても場所を空けるときは、同じ大きさの透明な枠
+    @ViewBuilder private var lock: some View {
+        if option.isLocked {
+            LockShape()
+                // 鍵のマークはボタンの文字と同じ色（引き継ぎブックの 6 ページの見本の「8ペア」と同じ濃さ。コース選択とクリアでそろえる）
+                .fill(Palette.text)
+                .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
+        } else if reservesLockSpace {
+            Color.clear
+                .frame(width: Metrics.lockIconSize, height: Metrics.lockIconSize)
+        }
     }
 }
 

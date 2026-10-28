@@ -78,6 +78,9 @@ struct ParentalGateView: View {
         Text("\(gate.question.augend) ＋ \(gate.question.addend) ＝ ？")
             .appFont(Typography.parentalGateNumber)
             .foregroundStyle(Palette.text)
+            // 文字を大きくしても式の途中で折り返さないよう、1 行に縮める
+            .lineLimit(1)
+            .minimumScaleFactor(Metrics.textMinimumScale)
             .accessibilityLabel(Text(verbatim: ParentalGateSpeech.question(gate.question)))
             .accessibilityIdentifier("parentalGate.question")
     }

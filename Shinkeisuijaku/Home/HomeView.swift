@@ -20,6 +20,8 @@ struct HomeView: View {
     var onOpenStampBook: () -> Void = {}
     var onOpenParents: () -> Void = {}
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -97,7 +99,11 @@ struct HomeView: View {
                 .appFont(Typography.noteStrong)
                 .foregroundStyle(Palette.muted)
                 .accessibilityAddTraits(.isHeader)
-            HStack(spacing: Metrics.cardSpacing) {
+            // 文字を大きくしたとき（アクセシビリティの大きさ）は、コース名が途中で折り返さないよう縦に積む
+            let layout = TextSizeLayout.stacksVertically(dynamicTypeSize)
+                ? AnyLayout(VStackLayout(spacing: Metrics.cardSpacing))
+                : AnyLayout(HStackLayout(spacing: Metrics.cardSpacing))
+            layout {
                 ForEach(Course.allCases, id: \.self) { course in
                     Button {
                         onChooseCourse(course)

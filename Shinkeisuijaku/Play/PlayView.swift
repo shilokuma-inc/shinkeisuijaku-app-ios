@@ -122,6 +122,9 @@ struct PlayView: View {
                         .frame(height: Metrics.hintIconHeight)
                     Text("ヒント")
                         .appFont(Typography.button)
+                        // 文字を大きくしても 1 語の途中で折り返さず、カードの場所を減らさないよう 1 行に縮める
+                        .lineLimit(1)
+                        .minimumScaleFactor(Metrics.textMinimumScale)
                 }
                 .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
             }
@@ -135,6 +138,8 @@ struct PlayView: View {
             } label: {
                 Text("やめる")
                     .appFont(Typography.button)
+                    .lineLimit(1)
+                    .minimumScaleFactor(Metrics.textMinimumScale)
                     .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
             }
             .buttonStyle(SurfaceButtonStyle())
