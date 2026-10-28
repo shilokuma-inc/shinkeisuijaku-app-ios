@@ -17,6 +17,7 @@ import Foundation
 enum ScreenshotDemo {
     /// 撮る画面。rawValue が AppStore/screenshots.json の scene と対応する
     enum Scene: String {
+        /// ホーム（1 回クリアした後。前回は ひらがな・やさしい）
         case home
         /// デザイントークンの見本（色）。App Store には出さない
         case designTokenColors

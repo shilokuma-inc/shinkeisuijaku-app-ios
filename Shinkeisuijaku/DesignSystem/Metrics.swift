@@ -36,6 +36,22 @@ enum Metrics {
     /// ペアが揃って言葉が現れたときの絵の大きさ（カードの短辺に対する割合。下に言葉を置く分だけ小さくする）
     static let cardMatchedPictureRatio: CGFloat = 0.5
 
+    // ホーム（引き継ぎブックに値が無いものは、iPhone SE でスクロールせずに収まる大きさにした）
+    /// ホームの背景の水玉の間隔（色は `Palette.homeBackgroundDot`）
+    static let homeDotSpacing: CGFloat = 28
+    /// ホームの背景の水玉の直径
+    static let homeDotDiameter: CGFloat = 8
+    /// 動物 4 匹のアーチの、1 匹の絵の大きさ
+    static let homeArchPictureSize: CGFloat = 64
+    /// アーチの真ん中の 2 匹を、外の 2 匹より持ち上げる高さ
+    static let homeArchRise: CGFloat = 18
+    /// ホームのまとまり（アーチとタイトル・「あそぶ」・ほかの あそびかた）どうしのすき間
+    static let homeSectionSpacing: CGFloat = 20
+    /// ホームのタイトルが 1 行に入らないとき（文字を大きくしたとき）に縮める下限の割合
+    static let homeTitleMinimumScale: CGFloat = 0.5
+    /// 丸いボタン（おうちの方へ）の内側の左右の余白
+    static let roundButtonHorizontalPadding: CGFloat = 16
+
     // ボタン
     /// 大きな「あそぶ」の高さ
     static let playButtonHeight: CGFloat = 80
