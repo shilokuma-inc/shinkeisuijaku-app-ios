@@ -100,6 +100,9 @@ enum Palette {
     static let artBerry = Color(hex: 0xFF3D6B)
     /// 輪郭線。図形の輪郭線（太さは `Metrics.artOutlineWidth`）
     static let artOutline = Color(hex: 0x2B3140)
+    /// 画面の面（ボタンなど）の上に直接描く絵の線。ライトは輪郭線と同じ、ダークは文字の色にして暗い面でも見えるようにする
+    /// （カードの上の絵はカードの色が明るいままなので `artOutline` を使う）
+    static let artLineOnSurface = Color.dynamic(light: 0x2B3140, dark: 0xF3E9DD)
 
     // スタンプ
     /// 銀のふち。パス専用・ふつうをクリアしたスタンプ

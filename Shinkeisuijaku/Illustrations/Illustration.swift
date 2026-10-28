@@ -9,14 +9,14 @@
 
 import SwiftUI
 
-/// 絵の部品 1 つ（SVG の path・circle・ellipse 1 つ分）。座標は 108×108 の枠の中の値
+/// 絵の部品 1 つ（SVG の path・circle・ellipse 1 つ分）。座標は絵の枠（13 種類の絵は 108×108、ヒントの目は 108×54）の中の値
 struct IllustrationPart {
     let path: Path
     /// 塗りの色。塗らない線だけの部品は nil
     let fill: Color?
     /// 線の色。線の無い部品は nil
     let stroke: Color?
-    /// 線の太さ（枠が 108×108 のときの値。絵の大きさに合わせて太さも変わる）
+    /// 線の太さ（絵の枠の大きさのときの値。絵の大きさに合わせて太さも変わる）
     let lineWidth: CGFloat
     /// 線の端を丸くするか（表情の線など）
     let roundCap: Bool
@@ -50,12 +50,25 @@ struct IllustrationView: View {
     let picture: Picture
 
     var body: some View {
+        IllustrationPartsView(
+            parts: IllustrationArt.parts(for: picture),
+            canvasSize: CGSize(width: Metrics.artCanvasSize, height: Metrics.artCanvasSize)
+        )
+    }
+}
+
+/// 部品の並びを、元の枠（`canvasSize`）の縦横比のまま、与えられた大きさに収まるように拡大・縮小して描く
+struct IllustrationPartsView: View {
+    let parts: [IllustrationPart]
+    /// 部品の座標の枠の大きさ
+    let canvasSize: CGSize
+
+    var body: some View {
         Canvas { context, size in
-            let side = min(size.width, size.height)
-            let scale = side / Metrics.artCanvasSize
-            context.translateBy(x: (size.width - side) / 2, y: (size.height - side) / 2)
-            context.scaleBy(x: scale, y: scale)
-            for part in IllustrationArt.parts(for: picture) {
+            let fit = Self.fit(canvasSize: canvasSize, into: size)
+            context.translateBy(x: fit.offset.x, y: fit.offset.y)
+            context.scaleBy(x: fit.scale, y: fit.scale)
+            for part in parts {
                 if let fill = part.fill {
                     context.fill(part.path, with: .color(fill))
                 }
@@ -65,9 +78,16 @@ struct IllustrationView: View {
                 }
             }
         }
-        .aspectRatio(1, contentMode: .fit)
-        // 絵の名前の読み上げは、使う側（カード・スタンプ）で状態と合わせて付ける
+        .aspectRatio(canvasSize, contentMode: .fit)
+        // 絵の名前の読み上げは、使う側（カード・スタンプ・ボタン）で状態と合わせて付ける
         .accessibilityHidden(true)
+    }
+
+    /// 枠を描く場所に収める倍率と、真ん中に寄せるずれ（縦横比は保つ）
+    static func fit(canvasSize: CGSize, into size: CGSize) -> (scale: CGFloat, offset: CGPoint) {
+        let scale = min(size.width / canvasSize.width, size.height / canvasSize.height)
+        let offset = CGPoint(x: (size.width - canvasSize.width * scale) / 2, y: (size.height - canvasSize.height * scale) / 2)
+        return (scale, offset)
     }
 }
 
@@ -81,13 +101,14 @@ extension Path {
     }
 }
 
-/// 13 種類の絵を並べた見本の画面。撮影モードで開き、添付の画像と見比べるために使う
+/// 絵の見本の画面。上にヒントの目と「あ」、下に 13 種類の絵。撮影モードで開き、添付の画像・引き継ぎブックと見比べるために使う
 struct IllustrationCatalogView: View {
     /// 見本の列の数（添付の画像と同じ 3 列）
     private let columns = 3
 
     var body: some View {
         ScrollView {
+            symbols
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: Metrics.cardSpacing), count: columns),
                 spacing: Metrics.cardSpacing
@@ -107,6 +128,37 @@ struct IllustrationCatalogView: View {
             .padding(.horizontal, Metrics.screenHorizontalPadding)
         }
         .background(Palette.background)
+    }
+
+    /// ヒントの目（ボタンの見た目に置く）と、「あ」（金と銀のふちのスタンプに置く）
+    private var symbols: some View {
+        HStack(spacing: Metrics.screenHorizontalPadding) {
+            HStack(spacing: Metrics.cardSpacing) {
+                HintEyesView()
+                    .frame(height: Metrics.hintIconHeight)
+                Text("ヒント")
+                    .appFont(Typography.button)
+                    .foregroundStyle(Palette.text)
+            }
+            .padding(.horizontal, Metrics.screenHorizontalPadding)
+            .frame(minHeight: Metrics.buttonHeight)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius)
+                    .stroke(Palette.border, lineWidth: Metrics.borderWidth)
+            }
+            symbolStamp(rim: Palette.stampSilver, wash: Palette.stampSilverWash)
+            symbolStamp(rim: Palette.stampGold, wash: Palette.stampGoldWash)
+        }
+        .padding(.vertical, Metrics.screenHorizontalPadding)
+    }
+
+    /// 「あ」をふちの付いた丸に置いた見本（スタンプの部品はタスク 11 で作る）
+    private func symbolStamp(rim: Color, wash: Color) -> some View {
+        HiraganaSymbolView()
+            .frame(width: Metrics.stampBookMaxDiameter, height: Metrics.stampBookMaxDiameter)
+            .background(wash, in: Circle())
+            .overlay { Circle().stroke(rim, lineWidth: Metrics.stampRimWidth) }
     }
 }
 
