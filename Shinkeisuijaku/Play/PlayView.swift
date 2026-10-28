@@ -33,6 +33,8 @@ struct PlayView: View {
             footer
         }
         .padding(.horizontal, Metrics.gameHorizontalPadding)
+        // iPad では中身の幅に上限を設けて中央に置く（カードが横に広がりすぎない）
+        .contentWidthLimited()
         .padding(.vertical, Metrics.cardSpacing)
         .background(Palette.background)
         // ゲームごとに始め、ゲームが変わる・画面を離れるまで待ってから、そのゲームの待っている処理

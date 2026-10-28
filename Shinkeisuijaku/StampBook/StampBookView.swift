@@ -17,11 +17,13 @@ struct StampBookView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let diameter = StampBookLayout.diameter(forWidth: proxy.size.width - Metrics.screenHorizontalPadding * 2)
+            // iPad では中身の幅に上限があるので、上限の幅からスタンプの大きさを決める
+            let width = min(proxy.size.width, Metrics.contentMaxWidth)
+            let diameter = StampBookLayout.diameter(forWidth: width - Metrics.screenHorizontalPadding * 2)
             // 画面に入らないとき（iPhone SE で文字を大きくしたときなど）は、スクロールで全部見られる
             ScrollView {
                 content(diameter: diameter)
-                    .frame(maxWidth: .infinity)
+                    .contentWidthLimited()
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -113,6 +115,8 @@ struct StampBookView: View {
         .accessibilityIdentifier("stampBook.home")
         .padding(.horizontal, Metrics.screenHorizontalPadding)
         .padding(.vertical, Metrics.cardSpacing)
+        // ボタンは中身と同じ幅にし、下の帯の地は画面の幅いっぱいに敷く
+        .contentWidthLimited()
         .background(Palette.background)
     }
 }

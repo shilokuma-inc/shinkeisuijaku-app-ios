@@ -29,7 +29,8 @@ struct ParentsView: View {
         // 画面に入らないとき（iPhone SE・文字を大きくしたとき）は、スクロールで全部見られる
         ScrollView {
             content
-                .frame(maxWidth: .infinity)
+                // iPad では中身の幅に上限を設けて中央に置く
+                .contentWidthLimited()
         }
         .scrollBounceBehavior(.basedOnSize)
         // 「ホームにもどる」はスクロールしても隠れないよう、下に固定する（スタンプちょうと同じ）
@@ -234,6 +235,8 @@ struct ParentsView: View {
         .accessibilityIdentifier("parents.home")
         .padding(.horizontal, Metrics.screenHorizontalPadding)
         .padding(.vertical, Metrics.cardSpacing)
+        // ボタンは中身と同じ幅にし、下の帯の地は画面の幅いっぱいに敷く
+        .contentWidthLimited()
         .background(Palette.background)
     }
 }

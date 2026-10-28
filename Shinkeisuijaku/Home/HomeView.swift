@@ -24,6 +24,8 @@ struct HomeView: View {
         GeometryReader { proxy in
             ScrollView {
                 content
+                    // iPad では中身の幅に上限を設けて中央に置く
+                    .contentWidthLimited()
                     // 画面に入るときは画面の高さいっぱいに広げ、広告なしの一言を一番下に置く。
                     // 文字を大きくして入らないときは、高さを超えて伸び、スクロールで全部見られる
                     .frame(minHeight: proxy.size.height)
