@@ -215,7 +215,7 @@ struct SurfaceButtonStyle: ButtonStyle {
                     RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius)
                         .stroke(Palette.border, lineWidth: Metrics.borderWidth)
                 }
-                .opacity(configuration.isPressed || !isEnabled ? Metrics.pressedOpacity : 1)
+                .opacity(ButtonOpacity.value(isPressed: configuration.isPressed, isEnabled: isEnabled))
         }
     }
 }

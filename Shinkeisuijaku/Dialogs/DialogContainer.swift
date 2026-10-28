@@ -43,6 +43,17 @@ struct DialogContainer<Content: View>: View {
     }
 }
 
+/// ボタンの薄さの決まり（通常のボタン・主なボタン・丸いボタンで同じ）
+enum ButtonOpacity {
+    /// 押しているあいだは `Metrics.pressedOpacity`、押せないときは `Metrics.disabledOpacity`、それ以外は薄くしない
+    static func value(isPressed: Bool, isEnabled: Bool) -> Double {
+        if !isEnabled {
+            return Metrics.disabledOpacity
+        }
+        return isPressed ? Metrics.pressedOpacity : 1
+    }
+}
+
 /// 主なボタン（強調色の地・文字は強調の上の文字の色・角丸 14・高さ 52・文字は 15 の 800）。押しているあいだと押せないときは薄くする
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -59,7 +70,7 @@ struct PrimaryButtonStyle: ButtonStyle {
                 .foregroundStyle(Palette.accentText)
                 .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
                 .background(Palette.accent, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
-                .opacity(configuration.isPressed || !isEnabled ? Metrics.pressedOpacity : 1)
+                .opacity(ButtonOpacity.value(isPressed: configuration.isPressed, isEnabled: isEnabled))
         }
     }
 }
@@ -79,6 +90,7 @@ struct RoundButtonStyle: ButtonStyle {
                     .stroke(Palette.border, lineWidth: Metrics.borderWidth)
             }
             .contentShape(Capsule())
-            .opacity(configuration.isPressed ? Metrics.pressedOpacity : 1)
+            // 丸いボタンは押せなくすることが無いので、押しているあいだだけ薄くする
+            .opacity(ButtonOpacity.value(isPressed: configuration.isPressed, isEnabled: true))
     }
 }

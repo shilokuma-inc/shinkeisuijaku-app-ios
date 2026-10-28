@@ -83,6 +83,15 @@ struct DesignTokensTests {
         #expect(Motion.revealAllDuration(pairCount: 10, isBeforeFirstClear: true) == 4.8)
     }
 
+    /// ボタンは、押しているあいだと押せないときに、それぞれのトークンの薄さにする
+    @Test
+    func buttonOpacityUsesSeparateTokens() {
+        #expect(ButtonOpacity.value(isPressed: false, isEnabled: true) == 1)
+        #expect(ButtonOpacity.value(isPressed: true, isEnabled: true) == Metrics.pressedOpacity)
+        #expect(ButtonOpacity.value(isPressed: false, isEnabled: false) == Metrics.disabledOpacity)
+        #expect(ButtonOpacity.value(isPressed: true, isEnabled: false) == Metrics.disabledOpacity)
+    }
+
     /// 丸ゴの書体が端末に入っている（同梱しないため、名前が違うとシステムの書体に置き換わってしまう）
     @Test
     func roundedFontIsInstalled() {
