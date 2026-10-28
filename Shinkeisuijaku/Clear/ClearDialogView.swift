@@ -39,7 +39,7 @@ struct ClearDialogView: View {
             Text("よくできました！")
                 .appFont(Typography.dialogTitle)
                 .foregroundStyle(Palette.text)
-            Text(outcome.awardedStamp == nil ? "ぜんぶ あつめたね すごい！" : "あたらしい スタンプを ゲット")
+            Text(outcome.awardedStamp == nil ? "いっぱい あつめたね すごい！" : "あたらしい スタンプを ゲット")
                 .appFont(Typography.body)
                 .foregroundStyle(Palette.muted)
                 .padding(.bottom, Metrics.cardSpacing)
@@ -50,18 +50,18 @@ struct ClearDialogView: View {
             .accessibilityIdentifier("clear.playAgain")
             if let next = outcome.nextDifficulty {
                 nextDifficultyButton(next)
+                if showsLockedGuide {
+                    Text("おうちの方に あけてもらってね")
+                        .appFont(Typography.noteStrong)
+                        .foregroundStyle(Palette.text)
+                        .accessibilityIdentifier("clear.lockedGuide")
+                }
             }
             surfaceButton("スタンプちょう", identifier: "clear.stampBook") {
                 onAction(.stampBook)
             }
             surfaceButton("ホームにもどる", identifier: "clear.home") {
                 onAction(.home)
-            }
-            if showsLockedGuide {
-                Text("おうちの方に あけてもらってね")
-                    .appFont(Typography.noteStrong)
-                    .foregroundStyle(Palette.text)
-                    .accessibilityIdentifier("clear.lockedGuide")
             }
             if ClearOutcome.showsParentsGuide(hasPass: hasPass) {
                 Button {
@@ -85,6 +85,7 @@ struct ClearDialogView: View {
         return Button {
             if locked {
                 showsLockedGuide = true
+                AccessibilityNotification.Announcement(String(localized: "おうちの方に あけてもらってね")).post()
             } else {
                 onAction(.nextDifficulty(next))
             }
@@ -116,6 +117,38 @@ struct ClearDialogView: View {
     }
 }
 
+/// クリアを 1 回だけ記録する（スタンプを決めて保存し、振動を鳴らす）。ゲームごとに作る
+@MainActor
+final class ClearRecorder {
+    let course: Course
+    let difficulty: Difficulty
+    /// 記録したクリアの結果（まだなら nil）
+    private(set) var outcome: ClearOutcome?
+
+    init(course: Course, difficulty: Difficulty) {
+        self.course = course
+        self.difficulty = difficulty
+    }
+
+    /// クリアを記録する。同じゲームで二度呼んでも、2 回目は保存も振動もせずに 1 回目の結果を返す
+    @discardableResult
+    func record(
+        store: any AppDataStore,
+        hasPass: Bool,
+        haptics: any Haptics,
+        using generator: inout some RandomNumberGenerator
+    ) -> ClearOutcome {
+        if let outcome {
+            return outcome
+        }
+        let result = ClearOutcome.make(course: course, difficulty: difficulty, data: store.load(), hasPass: hasPass, using: &generator)
+        store.save(result.data)
+        haptics.cleared()
+        outcome = result
+        return result
+    }
+}
+
 /// プレイ画面とクリアのダイアログ。クリアになったらスタンプを決めて保存し、振動を鳴らしてダイアログを出す
 struct GameScreen: View {
     let session: GameSession
@@ -123,14 +156,38 @@ struct GameScreen: View {
     /// パスの権利があるか（StoreKit の権利。ストアはタスク 17）
     let hasPass: Bool
     let haptics: any Haptics
-    var onQuit: () -> Void = {}
-    var onClearAction: (ClearAction) -> Void = { _ in }
+    let onQuit: () -> Void
+    let onClearAction: (ClearAction) -> Void
 
+    @State private var recorder: ClearRecorder
     @State private var outcome: ClearOutcome?
+
+    init(
+        session: GameSession,
+        store: any AppDataStore,
+        hasPass: Bool,
+        haptics: any Haptics,
+        onQuit: @escaping () -> Void = {},
+        onClearAction: @escaping (ClearAction) -> Void = { _ in }
+    ) {
+        self.session = session
+        self.store = store
+        self.hasPass = hasPass
+        self.haptics = haptics
+        self.onQuit = onQuit
+        self.onClearAction = onClearAction
+        _recorder = State(initialValue: ClearRecorder(course: session.course, difficulty: session.difficulty))
+    }
 
     var body: some View {
         PlayView(session: session, haptics: haptics, onQuit: onQuit) {
-            recordClear()
+            var generator = SystemRandomNumberGenerator()
+            outcome = recorder.record(
+                store: store,
+                hasPass: hasPass,
+                haptics: haptics,
+                using: &generator
+            )
         }
         .overlay {
             if let outcome {
@@ -138,38 +195,21 @@ struct GameScreen: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: Motion.flipDuration), value: outcome)
-        // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じる
+        .animation(.easeOut(duration: Motion.dialogFadeDuration), value: outcome)
+        // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じて記録し直せるようにする
         .onChange(of: ObjectIdentifier(session)) {
+            recorder = ClearRecorder(course: session.course, difficulty: session.difficulty)
             outcome = nil
         }
     }
-
-    /// クリアの結果を決めて保存する（同じゲームで二度記録しない）
-    private func recordClear() {
-        guard outcome == nil else {
-            return
-        }
-        var generator = SystemRandomNumberGenerator()
-        let result = ClearOutcome.make(
-            course: session.course,
-            difficulty: session.difficulty,
-            data: store.load(),
-            hasPass: hasPass,
-            using: &generator
-        )
-        store.save(result.data)
-        haptics.cleared()
-        outcome = result
-    }
 }
 
-/// 撮影モードのクリアのダイアログ。プレイ画面の上に、通常のスタンプを 1 つもらった やさしい のクリアを出す（種を固定。保存しない）
+/// 撮影モードのクリアのダイアログ。プレイ画面（ひらがな）の上に、通常のスタンプを 1 つもらった ひらがな・やさしい のクリアを出す（種を固定。保存しない）
 struct ClearScreenshotDemoView: View {
     var body: some View {
         var generator = SeededRandomNumberGenerator(seed: 1)
         let outcome = ClearOutcome.make(
-            course: .animals,
+            course: .hiragana,
             difficulty: .easy,
             data: AppData(ownedStampIDs: Stamp.regularStamps.filter { $0 != .regular(.fox) }.prefix(4).map(\.id)),
             hasPass: false,

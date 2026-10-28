@@ -86,4 +86,21 @@ struct ClearOutcomeTests {
         #expect(pulses.map(\.start) == [0, 0.1])
         #expect(pulses.allSatisfy { $0.duration == 0.04 })
     }
+
+    /// クリアの記録は、保存と振動を 1 回だけ行い、同じゲームで二度呼んでもスタンプを増やさない
+    @Test
+    func recorderRecordsOnlyOnce() {
+        let store = InMemoryAppDataStore()
+        let haptics = SilentHaptics()
+        let recorder = ClearRecorder(course: .animals, difficulty: .easy)
+        var generator = SeededRandomNumberGenerator(seed: 5)
+        let first = recorder.record(store: store, hasPass: false, haptics: haptics, using: &generator)
+        let second = recorder.record(store: store, hasPass: false, haptics: haptics, using: &generator)
+        #expect(first == second)
+        #expect(store.saveCount == 1)
+        #expect(haptics.clearedCount == 1)
+        #expect(store.data.ownedStampIDs.count == 1)
+        #expect(store.data.hasClearedOnce)
+        #expect(recorder.outcome == first)
+    }
 }
