@@ -50,12 +50,25 @@ struct IllustrationView: View {
     let picture: Picture
 
     var body: some View {
+        IllustrationPartsView(
+            parts: IllustrationArt.parts(for: picture),
+            canvasSize: CGSize(width: Metrics.artCanvasSize, height: Metrics.artCanvasSize)
+        )
+    }
+}
+
+/// 部品の並びを、元の枠（`canvasSize`）の縦横比のまま、与えられた大きさに収まるように拡大・縮小して描く
+struct IllustrationPartsView: View {
+    let parts: [IllustrationPart]
+    /// 部品の座標の枠の大きさ
+    let canvasSize: CGSize
+
+    var body: some View {
         Canvas { context, size in
-            let side = min(size.width, size.height)
-            let scale = side / Metrics.artCanvasSize
-            context.translateBy(x: (size.width - side) / 2, y: (size.height - side) / 2)
+            let scale = min(size.width / canvasSize.width, size.height / canvasSize.height)
+            context.translateBy(x: (size.width - canvasSize.width * scale) / 2, y: (size.height - canvasSize.height * scale) / 2)
             context.scaleBy(x: scale, y: scale)
-            for part in IllustrationArt.parts(for: picture) {
+            for part in parts {
                 if let fill = part.fill {
                     context.fill(part.path, with: .color(fill))
                 }
@@ -65,8 +78,8 @@ struct IllustrationView: View {
                 }
             }
         }
-        .aspectRatio(1, contentMode: .fit)
-        // 絵の名前の読み上げは、使う側（カード・スタンプ）で状態と合わせて付ける
+        .aspectRatio(canvasSize, contentMode: .fit)
+        // 絵の名前の読み上げは、使う側（カード・スタンプ・ボタン）で状態と合わせて付ける
         .accessibilityHidden(true)
     }
 }
@@ -108,6 +121,7 @@ struct IllustrationCatalogView: View {
         }
         .background(Palette.background)
     }
+
 }
 
 #Preview {
