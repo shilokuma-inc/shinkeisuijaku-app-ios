@@ -15,12 +15,18 @@ enum Metrics {
     static let gameHorizontalPadding: CGFloat = 10
     /// ホーム・スタンプちょうの左右の余白
     static let screenHorizontalPadding: CGFloat = 16
+    /// 画面の中身（左右の余白を含む列）の幅の上限。これより広い画面（iPad）では、中身をこの幅にして中央に置く。
+    /// 引き継ぎブックに値が無いので、iPhone の一番広い画面（440）より広く、iPad の縦（13 インチで 1032）で横に広がりすぎない幅にした
+    static let contentMaxWidth: CGFloat = 600
 
     // カード
     /// カードの列の数
     static let cardColumns = 4
     /// カードどうしのすき間（縦横とも）
     static let cardSpacing: CGFloat = 8
+    /// カードの高さの、幅に対する割合の上限。行は使える高さで等分するが、これより縦に長くはしない（あまった高さは上下に分ける）。
+    /// 引き継ぎブックに値が無いので、6 ページの見本のカード（およそ 1.35）より少し縦長にした
+    static let cardMaxAspectRatio: CGFloat = 1.5
     /// カードの角丸
     static let cardCornerRadius: CGFloat = 10
     /// カードの影の下へのずれ（色は `Palette.cardShadow`）
