@@ -20,6 +20,9 @@ struct PlayView: View {
 
     @State private var isConfirmingQuit = false
 
+    /// ゲームが変わる・画面を離れるのを待つ間隔（cancel されたらすぐ戻るので、長くてよい）
+    private static let lifetimeCheckInterval: TimeInterval = 3600
+
     var body: some View {
         VStack(spacing: Metrics.cardSpacing) {
             header
@@ -32,20 +35,28 @@ struct PlayView: View {
         .padding(.horizontal, Metrics.gameHorizontalPadding)
         .padding(.vertical, Metrics.cardSpacing)
         .background(Palette.background)
-        .task {
-            session.start()
-        }
-        .onDisappear {
-            // 画面を離れたら、待っている処理（全部見せる・ハズレを戻す・クリアまでの間）を止める
-            session.quit()
+        // ゲームごとに始め、ゲームが変わる・画面を離れるまで待ってから、そのゲームの待っている処理
+        // （全部見せる・ハズレを戻す・クリアまでの間）を止める
+        .task(id: ObjectIdentifier(session)) {
+            let current = session
+            current.start()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(Self.lifetimeCheckInterval))
+            }
+            current.quit()
         }
         .onChange(of: session.phase) { _, phase in
             if phase == .cleared {
+                // 確かめているあいだにクリアになったら、確かめるのをやめてクリアに進む（やめるとクリアの両方に進まない）
+                isConfirmingQuit = false
                 onCleared()
             }
         }
         .alert("やめますか？", isPresented: $isConfirmingQuit) {
-            Button("やめる", role: .destructive) {
+            Button("やめる") {
+                guard session.phase != .cleared else {
+                    return
+                }
                 session.quit()
                 onQuit()
             }
@@ -58,6 +69,7 @@ struct PlayView: View {
         VStack(spacing: Metrics.pairCountVerticalPadding) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.cardSpacing) {
                 Text(session.course.name)
+                    .lineLimit(1)
                     .appFont(Typography.note)
                     .foregroundStyle(Palette.muted)
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
@@ -71,6 +83,8 @@ struct PlayView: View {
                 }
                 .foregroundStyle(Palette.text)
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .padding(.vertical, Metrics.pairCountVerticalPadding)
             .padding(.horizontal, Metrics.pairCountHorizontalPadding)
             .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.pairCountCornerRadius))
@@ -113,6 +127,8 @@ struct PlayView: View {
                     .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
             }
             .buttonStyle(SurfaceButtonStyle())
+            // 全部揃った後は、クリアのダイアログを待つのであって、やめるには進めない
+            .disabled(session.phase == .finishing || session.phase == .cleared)
             .accessibilityIdentifier("play.quit")
         }
     }
@@ -137,8 +153,9 @@ private struct CardGrid: View {
             let columns = Metrics.cardColumns
             let rows = max((cards.count + columns - 1) / columns, 1)
             let spacing = Metrics.cardSpacing
-            let width = (proxy.size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
-            let height = (proxy.size.height - spacing * CGFloat(rows - 1)) / CGFloat(rows)
+            // 文字を大きくして使える高さが減っても、負の大きさにしない
+            let width = max((proxy.size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns), 0)
+            let height = max((proxy.size.height - spacing * CGFloat(rows - 1)) / CGFloat(rows), 0)
             VStack(spacing: spacing) {
                 ForEach(0..<rows, id: \.self) { row in
                     HStack(spacing: spacing) {
@@ -168,17 +185,26 @@ private struct CardGrid: View {
     }
 }
 
-/// 通常のボタン（面の色の地・境界線 1・角丸 14・高さ 52）
+/// 通常のボタン（面の色の地・境界線 1・角丸 14・高さ 52）。押しているあいだと押せないときは薄くする
 struct SurfaceButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Palette.text)
-            .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius)
-                    .stroke(Palette.border, lineWidth: Metrics.borderWidth)
-            }
-            .opacity(configuration.isPressed ? Metrics.pressedOpacity : 1)
+        SurfaceButton(configuration: configuration)
+    }
+
+    private struct SurfaceButton: View {
+        let configuration: Configuration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .foregroundStyle(Palette.text)
+                .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Metrics.buttonCornerRadius)
+                        .stroke(Palette.border, lineWidth: Metrics.borderWidth)
+                }
+                .opacity(configuration.isPressed || !isEnabled ? Metrics.pressedOpacity : 1)
+        }
     }
 }
 
