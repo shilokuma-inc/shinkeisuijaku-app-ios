@@ -19,9 +19,9 @@ struct AppFlowWindowsTests {
         let second: AppFlow
     }
 
-    private func makeTwoWindows(data: AppData = .initial) -> TwoWindows {
+    private func makeTwoWindows(data: AppData = .initial, entitled: Bool = false) -> TwoWindows {
         let store = InMemoryAppDataStore(data: data)
-        let passStore = PassStore(backend: FakePassStoreBackend(), dataStore: store)
+        let passStore = PassStore(backend: FakePassStoreBackend(entitled: entitled), dataStore: store)
         let services = AppServices(store: store, passStore: passStore, haptics: SilentHaptics())
         return TwoWindows(
             store: store,
@@ -90,6 +90,21 @@ struct AppFlowWindowsTests {
     }
 
     /// 片方の窓で「やめる」・窓を閉じる（プレイ画面がゲームを止める）と、その窓のゲームだけが止まり、もう片方のゲームは続く
+    /// パスがあり 2 つの窓で同じコースの ふつう を続けてクリアしても、パス専用のスタンプは先の窓の 1 回だけで、後の窓は通常のスタンプになる（Q7）
+    @Test
+    func passStampOnlyOnceAcrossWindows() throws {
+        // パスの権利は StoreKit で確かめるまで端末内のキャッシュなので、キャッシュも持たせる
+        let windows = makeTwoWindows(data: AppData(hasPassCache: true, hasClearedOnce: true), entitled: true)
+        let choice = GameChoice(course: .animals, difficulty: .normal)
+        windows.first.startGame(choice)
+        windows.second.startGame(choice)
+        let firstStamp = try #require(windows.first.recordClear()?.awardedStamp)
+        let secondStamp = try #require(windows.second.recordClear()?.awardedStamp)
+        #expect(firstStamp == .pass(.animals, .silver))
+        #expect(secondStamp != .pass(.animals, .silver))
+        #expect(windows.store.data.ownedStampIDs.count == 2)
+    }
+
     @Test
     func quittingOneWindowKeepsOtherGame() async throws {
         let windows = makeTwoWindows()
