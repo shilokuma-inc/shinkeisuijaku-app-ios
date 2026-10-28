@@ -16,6 +16,8 @@ final class ShinkeisuijakuUITests: XCTestCase {
     @MainActor
     func testLaunchShowsContentView() throws {
         let app = XCUIApplication()
+        // メモリ上の保存に切り替え、Simulator の実際の UserDefaults を使わない（アプリの AppDataStoreFactory.uiTestingArgument）
+        app.launchArguments = ["-uiTesting"]
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Hello, world!"].waitForExistence(timeout: 5))
