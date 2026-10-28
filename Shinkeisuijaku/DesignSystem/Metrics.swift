@@ -47,6 +47,8 @@ enum Metrics {
     static let homeArchRise: CGFloat = 18
     /// ホームのまとまり（アーチとタイトル・「あそぶ」・ほかの あそびかた）どうしのすき間
     static let homeSectionSpacing: CGFloat = 20
+    /// ホームのタイトルが 1 行に入らないとき（文字を大きくしたとき）に縮める下限の割合
+    static let homeTitleMinimumScale: CGFloat = 0.5
     /// 丸いボタン（おうちの方へ）の内側の左右の余白
     static let roundButtonHorizontalPadding: CGFloat = 16
 
