@@ -206,19 +206,28 @@ struct SurfaceButtonStyle: ButtonStyle {
     }
 }
 
-/// 撮影モードのプレイ画面。ひらがな・やさしいで、2 組揃えて 1 枚めくった状態をデモの盤面で開く（保存も振動も使わない）
+/// 撮影モードのプレイ画面。デモの盤面（種を固定）で、組の番号の小さい順に `matchedPairCount` 組を揃え、
+/// `flipsNextCard` なら次の組の 1 枚をめくった状態で開く（保存も振動も使わない）。
+/// 既定はプレイの撮影の状態（ひらがな・やさしいで、2 組揃えて 1 枚めくった状態）。クリアの撮影では、全部揃えた盤面を後ろに敷く
 struct PlayScreenshotDemoView: View {
-    @State private var session: GameSession = {
+    /// 揃える組の数。nil なら全部揃える（クリアになる）
+    private let matchedPairCount: Int?
+    private let flipsNextCard: Bool
+    @State private var session: GameSession
+
+    init(course: Course = .hiragana, matchedPairCount: Int? = 2, flipsNextCard: Bool = true) {
+        self.matchedPairCount = matchedPairCount
+        self.flipsNextCard = flipsNextCard
         var generator = SeededRandomNumberGenerator(seed: 4)
-        return GameSession(
-            course: .hiragana,
+        _session = State(initialValue: GameSession(
+            course: course,
             difficulty: .easy,
             isBeforeFirstClear: false,
             timing: .standard,
             clock: InstantGameClock(),
             using: &generator
-        )
-    }()
+        ))
+    }
 
     var body: some View {
         PlayView(session: session, haptics: SilentHaptics())
@@ -226,11 +235,12 @@ struct PlayScreenshotDemoView: View {
                 session.start()
                 await session.waitForPendingWork()
                 let pairs = Dictionary(grouping: session.board.cards, by: \.pairID).values.sorted { $0[0].pairID < $1[0].pairID }
-                for pair in pairs.prefix(2) {
+                let matchedCount = matchedPairCount ?? pairs.count
+                for pair in pairs.prefix(matchedCount) {
                     session.flip(cardID: pair[0].id)
                     session.flip(cardID: pair[1].id)
                 }
-                if let next = pairs.dropFirst(2).first {
+                if flipsNextCard, let next = pairs.dropFirst(matchedCount).first {
                     session.flip(cardID: next[0].id)
                 }
             }
