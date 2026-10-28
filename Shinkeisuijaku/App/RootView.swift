@@ -12,7 +12,8 @@ import SwiftUI
 /// アプリの一番外の画面
 struct RootView: View {
     /// この窓の画面の流れ。窓ごとに作るので、iPad で窓が 2 つ開いても、ゲーム・クリアの記録・積んだ画面は窓ごとに分かれる。
-    /// `State` は窓の寿命で最初の値だけを持つ（`init` が呼び直されて作った値は捨てられ、画面に出ないのでゲームも始まらない）
+    /// `State` は窓の寿命で最初の値だけを持つ（`init` が呼び直されて作った値は捨てられ、画面に出ないのでゲームも始まらない。
+    /// 起動してすぐのゲームは保存を書き換えないので、捨てられる値が保存を変えることもない）
     @State private var flow: AppFlow
     @Environment(\.scenePhase) private var scenePhase
 
@@ -22,7 +23,7 @@ struct RootView: View {
         _flow = State(initialValue: AppFlow.makeForLaunch(services: services))
     }
 
-    /// 作った画面の流れで開く（撮影モード）
+    /// 作った画面の流れで開く（Preview・テスト用）
     init(flow: AppFlow) {
         _flow = State(initialValue: flow)
     }
