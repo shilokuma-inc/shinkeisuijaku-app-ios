@@ -21,41 +21,15 @@ struct HomeView: View {
     var onOpenParents: () -> Void = {}
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Metrics.homeSectionSpacing) {
-                HStack {
-                    Spacer()
-                    parentsButton
-                }
-                VStack(spacing: Metrics.cardSpacing) {
-                    HomeArchView()
-                    HomeTitleView()
-                    Text("おなじ えを みつけて あそぼう")
-                        .appFont(Typography.body)
-                        .foregroundStyle(Palette.muted)
-                }
-                PlayButton(choice: resumeChoice, action: onPlay)
-                otherCourses
-                Button(action: onOpenStampBook) {
-                    Text("スタンプちょう")
-                        .appFont(Typography.button)
-                        .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
-                }
-                .buttonStyle(SurfaceButtonStyle())
-                .accessibilityIdentifier("home.stampBook")
-                Spacer(minLength: 0)
-                Text("こうこくは でません")
-                    .appFont(Typography.note)
-                    .foregroundStyle(Palette.muted)
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    // 画面に入るときは画面の高さいっぱいに広げ、広告なしの一言を一番下に置く。
+                    // 文字を大きくして入らないときは、高さを超えて伸び、スクロールで全部見られる
+                    .frame(minHeight: proxy.size.height)
             }
-            .padding(.horizontal, Metrics.screenHorizontalPadding)
-            .padding(.vertical, Metrics.cardSpacing)
-            // 画面に入るときは画面の高さいっぱいに広げ、広告なしの一言を一番下に置く（文字を大きくして入らないときだけスクロールする）
-            .containerRelativeFrame(.vertical) { height, _ in
-                height
-            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollBounceBehavior(.basedOnSize)
         .background {
             ZStack {
                 Palette.background
@@ -64,6 +38,38 @@ struct HomeView: View {
             .ignoresSafeArea()
         }
         .accessibilityIdentifier("home")
+    }
+
+    /// ホームの中身（上から順に並べる）
+    private var content: some View {
+        VStack(spacing: Metrics.homeSectionSpacing) {
+            HStack {
+                Spacer()
+                parentsButton
+            }
+            VStack(spacing: Metrics.cardSpacing) {
+                HomeArchView()
+                HomeTitleView()
+                Text("おなじ えを みつけて あそぼう")
+                    .appFont(Typography.body)
+                    .foregroundStyle(Palette.muted)
+            }
+            PlayButton(choice: resumeChoice, action: onPlay)
+            otherCourses
+            Button(action: onOpenStampBook) {
+                Text("スタンプちょう")
+                    .appFont(Typography.button)
+                    .frame(maxWidth: .infinity, minHeight: Metrics.buttonHeight)
+            }
+            .buttonStyle(SurfaceButtonStyle())
+            .accessibilityIdentifier("home.stampBook")
+            Spacer(minLength: 0)
+            Text("こうこくは でません")
+                .appFont(Typography.note)
+                .foregroundStyle(Palette.muted)
+        }
+        .padding(.horizontal, Metrics.screenHorizontalPadding)
+        .padding(.vertical, Metrics.cardSpacing)
     }
 
     /// 上の右の「おうちの方へ」（丸いボタン・高さ 44 以上）
