@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 @testable import Shinkeisuijaku
 import Testing
 
@@ -106,7 +107,7 @@ struct AppFlowTests {
     /// 次の難易度は、同じコースの次の難易度の新しいゲームにする
     @Test
     func nextDifficultyStartsThatGame() throws {
-        let data = AppData(lastCourse: .hiragana, hasClearedOnce: true)
+        let data = AppData(hasPassCache: true, lastCourse: .hiragana, hasClearedOnce: true)
         let flow = makeFlow(data: data, entitled: true).flow
         flow.play()
         flow.handle(.nextDifficulty(.normal))
@@ -114,6 +115,47 @@ struct AppFlowTests {
         #expect(session.course == .hiragana)
         #expect(session.difficulty == .normal)
         #expect(flow.path == [.game])
+    }
+
+    /// 鍵の付いた次の難易度（パスの権利が無い）は、押されても始めない
+    @Test
+    func lockedNextDifficultyDoesNotStart() throws {
+        let flow = makeFlow().flow
+        let first = try #require(flow.session)
+        flow.handle(.nextDifficulty(.normal))
+        #expect(flow.session === first)
+        #expect(first.difficulty == .easy)
+    }
+
+    /// クリアは 1 回のゲームで 1 回だけ記録し、「もう一回あそぶ」の後のクリアはまた記録する（スタンプが増える）
+    @Test
+    func recordClearOncePerGame() throws {
+        let (flow, store) = makeFlow()
+        let first = try #require(flow.recordClear())
+        #expect(flow.recordClear() == first)
+        #expect(store.data.ownedStampIDs.count == 1)
+        #expect(store.data.hasClearedOnce)
+        flow.handle(.playAgain)
+        let second = try #require(flow.session)
+        #expect(!second.isBeforeFirstClear, "1 回クリアした後のゲームは、全部見せる時間が短い方")
+        flow.recordClear()
+        #expect(store.data.ownedStampIDs.count == 2)
+    }
+
+    /// ゲームを始めると、ホームの「あそぶ」の表示（前回のコースと難易度）が変わったと画面に伝わる
+    @Test
+    func resumeChoiceIsObservable() async {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        #expect(flow.resumeChoice == GameChoice(course: .animals, difficulty: .easy))
+        await confirmation { changed in
+            withObservationTracking {
+                _ = flow.resumeChoice
+            } onChange: {
+                changed()
+            }
+            flow.startGame(GameChoice(course: .hiragana, difficulty: .easy))
+        }
+        #expect(flow.resumeChoice == GameChoice(course: .hiragana, difficulty: .easy))
     }
 
     /// クリアの「ホームにもどる」でホームに戻る
