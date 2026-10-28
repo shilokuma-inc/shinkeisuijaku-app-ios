@@ -149,45 +149,22 @@ final class ClearRecorder {
     }
 }
 
-/// プレイ画面とクリアのダイアログ。クリアになったらスタンプを決めて保存し、振動を鳴らしてダイアログを出す
+/// プレイ画面とクリアのダイアログ。クリアになったら記録してもらい（スタンプ・保存・振動）、ダイアログを出す
 struct GameScreen: View {
     let session: GameSession
-    let store: any AppDataStore
-    /// パスの権利があるか（StoreKit の権利。ストアはタスク 17）
+    /// パスの権利があるか（次の難易度の鍵・おうちの方への案内に使う）
     let hasPass: Bool
     let haptics: any Haptics
     let onQuit: () -> Void
+    /// クリアを記録して結果を返す（同じゲームで二度呼ばれても 1 回だけ記録する。`AppFlow.recordClear()`）
+    let onCleared: () -> ClearOutcome?
     let onClearAction: (ClearAction) -> Void
 
-    @State private var recorder: ClearRecorder
     @State private var outcome: ClearOutcome?
-
-    init(
-        session: GameSession,
-        store: any AppDataStore,
-        hasPass: Bool,
-        haptics: any Haptics,
-        onQuit: @escaping () -> Void = {},
-        onClearAction: @escaping (ClearAction) -> Void = { _ in }
-    ) {
-        self.session = session
-        self.store = store
-        self.hasPass = hasPass
-        self.haptics = haptics
-        self.onQuit = onQuit
-        self.onClearAction = onClearAction
-        _recorder = State(initialValue: ClearRecorder(course: session.course, difficulty: session.difficulty))
-    }
 
     var body: some View {
         PlayView(session: session, haptics: haptics, onQuit: onQuit) {
-            var generator = SystemRandomNumberGenerator()
-            outcome = recorder.record(
-                store: store,
-                hasPass: hasPass,
-                haptics: haptics,
-                using: &generator
-            )
+            outcome = onCleared()
         }
         .overlay {
             if let outcome {
@@ -196,9 +173,8 @@ struct GameScreen: View {
             }
         }
         .animation(.easeOut(duration: Motion.dialogFadeDuration), value: outcome)
-        // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じて記録し直せるようにする
+        // もう一回あそぶ・次の難易度で新しいゲームが来たら、ダイアログを閉じる（記録は呼び出し側がゲームごとにやり直す）
         .onChange(of: ObjectIdentifier(session)) {
-            recorder = ClearRecorder(course: session.course, difficulty: session.difficulty)
             outcome = nil
         }
     }

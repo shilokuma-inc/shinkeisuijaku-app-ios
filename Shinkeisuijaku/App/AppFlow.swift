@@ -22,6 +22,8 @@ final class AppFlow {
     var path: [Destination] = []
     /// 遊んでいる（最後に始めた）ゲーム。ホームに戻っても、戻る動きのあいだ画面に出ているので残す
     private(set) var session: GameSession?
+    /// 前回のコースと難易度（保存と同じ値。ホームの「あそぶ」の表示が変化を見られるよう、観測できる値として持つ）
+    private(set) var lastChoice: GameChoice
 
     @ObservationIgnored let store: any AppDataStore
     @ObservationIgnored let passStore: PassStore
@@ -29,6 +31,8 @@ final class AppFlow {
     @ObservationIgnored private let timing: GameTiming
     @ObservationIgnored private let clock: any GameClock
     @ObservationIgnored private var generator: any RandomNumberGenerator
+    /// 遊んでいるゲームのクリアの記録。ゲームごとに作り直し、1 回のゲームで 1 回だけ記録する
+    @ObservationIgnored private var recorder: ClearRecorder?
 
     /// 保存の中身を見て、初回クリア前ならゲームを始めた状態で用意する
     /// - Parameter generator: カードを配る乱数。テストでは種を固定したものを渡す
@@ -46,7 +50,9 @@ final class AppFlow {
         self.timing = timing
         self.clock = clock
         self.generator = generator
-        if let choice = LaunchRules.launchGame(store.load()) {
+        let data = store.load()
+        lastChoice = GameChoice(course: data.lastCourse, difficulty: data.lastDifficulty)
+        if let choice = LaunchRules.launchGame(data) {
             startGame(choice)
         }
     }
@@ -58,7 +64,7 @@ final class AppFlow {
 
     /// ホームの「あそぶ」で始めるゲーム（前回のコースと難易度）
     var resumeChoice: GameChoice {
-        LaunchRules.resumeGame(store.load(), hasPass: hasPass)
+        LaunchRules.resumeGame(last: lastChoice, hasPass: hasPass)
     }
 
     /// ホームの「あそぶ」。前回のコースと難易度で始める
@@ -74,6 +80,8 @@ final class AppFlow {
             data.lastDifficulty = choice.difficulty
             store.save(data)
         }
+        lastChoice = choice
+        recorder = ClearRecorder(course: choice.course, difficulty: choice.difficulty)
         session = GameSession(
             course: choice.course,
             difficulty: choice.difficulty,
@@ -85,6 +93,17 @@ final class AppFlow {
         if path != [.game] {
             path = [.game]
         }
+    }
+
+    /// 遊んでいるゲームのクリアを記録する（スタンプを決めて保存し、振動を鳴らす）。同じゲームで二度呼んでも 1 回だけ記録する
+    @discardableResult
+    func recordClear() -> ClearOutcome? {
+        guard let recorder else {
+            return nil
+        }
+        let outcome = recorder.record(store: store, hasPass: hasPass, haptics: haptics, using: &generator)
+        lastChoice = GameChoice(course: outcome.data.lastCourse, difficulty: outcome.data.lastDifficulty)
+        return outcome
     }
 
     /// ホームに戻る（「やめる」・クリアの「ホームにもどる」。初回クリア前に起動してすぐのゲームでも、ホームへ）
@@ -101,6 +120,10 @@ final class AppFlow {
         case .playAgain:
             startGame(GameChoice(course: session.course, difficulty: session.difficulty))
         case let .nextDifficulty(difficulty):
+            // 鍵の付いた難易度はダイアログで案内を出して止めているが、ここでも始めない（購入は保護者の確認のあとだけ）
+            guard !difficulty.requiresPass || hasPass else {
+                return
+            }
             startGame(GameChoice(course: session.course, difficulty: difficulty))
         case .home:
             goHome()

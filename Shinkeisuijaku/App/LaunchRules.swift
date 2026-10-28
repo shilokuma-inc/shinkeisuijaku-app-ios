@@ -32,7 +32,12 @@ enum LaunchRules {
     /// ホームの「あそぶ」で始めるゲーム。前回のコースと難易度で始め、
     /// 前回の難易度に鍵が付いている（返金などでパスの権利が無い）ときは、そのコースのやさしいで始める
     static func resumeGame(_ data: AppData, hasPass: Bool) -> GameChoice {
-        let difficulty = data.lastDifficulty.requiresPass && !hasPass ? .easy : data.lastDifficulty
-        return GameChoice(course: data.lastCourse, difficulty: difficulty)
+        resumeGame(last: GameChoice(course: data.lastCourse, difficulty: data.lastDifficulty), hasPass: hasPass)
+    }
+
+    /// ホームの「あそぶ」で始めるゲーム（前回のコースと難易度から）
+    static func resumeGame(last: GameChoice, hasPass: Bool) -> GameChoice {
+        let difficulty = last.difficulty.requiresPass && !hasPass ? .easy : last.difficulty
+        return GameChoice(course: last.course, difficulty: difficulty)
     }
 }

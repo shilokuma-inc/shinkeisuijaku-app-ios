@@ -53,10 +53,10 @@ struct RootView: View {
         if let session = flow.session {
             GameScreen(
                 session: session,
-                store: flow.store,
                 hasPass: flow.hasPass,
                 haptics: flow.haptics,
                 onQuit: flow.goHome,
+                onCleared: flow.recordClear,
                 onClearAction: flow.handle
             )
             .toolbar(.hidden, for: .navigationBar)
