@@ -27,6 +27,8 @@ enum PassPurchaseResult: Equatable, Sendable {
     case unverified
     /// 失敗した（通信できない・商品が読めない など）
     case failed
+    /// ほかの購入・復元の途中なので、何もしなかった
+    case busy
 }
 
 /// 復元を試した結果
@@ -37,6 +39,8 @@ enum PassRestoreResult: Equatable, Sendable {
     case notFound
     /// 失敗した（サインインをやめた・通信できない など）
     case failed
+    /// ほかの購入・復元の途中なので、何もしなかった
+    case busy
 }
 
 /// StoreKit との受け渡し
@@ -54,7 +58,8 @@ protocol PassStoreBackend: AnyObject {
     func transactionUpdates() -> AsyncStream<Void>
 }
 
-/// パスのストア。画面はこの値を見て、鍵・値段・購入のボタンを出す
+/// パスのストア。画面はこの値を見て、鍵・値段・購入のボタンを出す。
+/// アプリと同じ寿命で 1 つだけ作る（取引の変化の購読は `stop()` で止まる。`[weak self]` なので循環参照はしない）
 @Observable
 final class PassStore {
     /// パスの権利があるか。起動直後は端末内のキャッシュ、権利を確かめた後は StoreKit の値
@@ -67,6 +72,10 @@ final class PassStore {
     @ObservationIgnored private let backend: any PassStoreBackend
     @ObservationIgnored private let dataStore: any AppDataStore
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
+    /// 権利の確認を読み始めるたびに進める番号
+    @ObservationIgnored private var latestCheck = 0
+    /// 権利に使った確認の番号。これより前に読み始めた確認の結果は古いので捨てる（購入で権利を付けたら、それまでの確認をすべて古くする）
+    @ObservationIgnored private var appliedCheck = 0
 
     init(backend: any PassStoreBackend, dataStore: any AppDataStore) {
         self.backend = backend
@@ -77,7 +86,7 @@ final class PassStore {
     /// 取引の変化の購読を始め、値段と権利を読む（起動時に 1 回呼ぶ）
     func start() async {
         startObservingTransactions()
-        displayPrice = await backend.loadDisplayPrice()
+        // 権利の確認を値段の読み込み（通信）に待たせないよう、権利を先に確かめる（値段はその中で、まだ無ければ読む）
         await refreshEntitlement()
     }
 
@@ -89,19 +98,31 @@ final class PassStore {
 
     /// StoreKit で権利を確かめ直し、端末内のキャッシュも合わせる（起動時と前面に戻ったとき）
     func refreshEntitlement() async {
-        setHasPass(await backend.hasEntitlement())
+        latestCheck += 1
+        let check = latestCheck
+        let entitled = await backend.hasEntitlement()
+        // 待っているあいだに、購入やあとから読み始めた確認で権利が決まっていたら、この結果は古いので使わない
+        if check > appliedCheck {
+            appliedCheck = check
+            setHasPass(entitled)
+        }
+        if displayPrice == nil {
+            // 起動時に値段を読めなかったときは、ここで読み直す
+            displayPrice = await backend.loadDisplayPrice()
+        }
     }
 
     /// パスを買う。買えたら権利を付ける（承認待ちは、あとで取引の変化として届く）
     @discardableResult
     func purchase() async -> PassPurchaseResult {
         guard !isBusy else {
-            return .failed
+            return .busy
         }
         isBusy = true
         defer { isBusy = false }
         let result = await backend.purchase()
         if result == .purchased {
+            appliedCheck = latestCheck
             setHasPass(true)
         }
         return result
@@ -111,7 +132,7 @@ final class PassStore {
     @discardableResult
     func restore() async -> PassRestoreResult {
         guard !isBusy else {
-            return .failed
+            return .busy
         }
         isBusy = true
         defer { isBusy = false }
@@ -129,7 +150,8 @@ final class PassStore {
         let updates = backend.transactionUpdates()
         updatesTask = Task { [weak self] in
             for await _ in updates {
-                guard let self else {
+                // stop() の後に、溜まっていた変化が届いても権利を変えない（cancel されてもストリームは溜まった分を先に返す）
+                guard let self, !Task.isCancelled else {
                     return
                 }
                 await self.refreshEntitlement()
@@ -149,7 +171,8 @@ final class PassStore {
     }
 }
 
-/// 擬似のストア（UI テスト・撮影モード用。StoreKit を使わない）
+/// 擬似のストア（Unit テスト・UI テスト・撮影モード用。StoreKit を使わない）。
+/// App Store の撮影（`Tools/capture_screenshots.sh`）でも使うので Release にも入るが、一般の利用者は切り替えの起動引数を渡せない
 @MainActor
 final class FakePassStoreBackend: PassStoreBackend {
     var displayPrice: String? = "¥100"
@@ -161,6 +184,16 @@ final class FakePassStoreBackend: PassStoreBackend {
     /// 復元の同期が成功するか（サインインをやめた・通信できないときは false）
     var syncSucceeds = true
     private var continuation: AsyncStream<Void>.Continuation?
+    /// 権利の確認を止めておくか（テストで、確認と購入が重なる順番を再現するため）
+    var holdsEntitlementChecks = false
+    /// 止めている権利の確認の数
+    var heldEntitlementChecks: Int {
+        heldChecks.count
+    }
+    private var heldChecks: [CheckedContinuation<Void, Never>] = []
+    /// 購入を止めておくか（テストで、購入中の二重押しを再現するため）
+    var holdsPurchase = false
+    private var heldPurchase: CheckedContinuation<Void, Never>?
 
     init(entitled: Bool = false) {
         self.entitled = entitled
@@ -171,6 +204,9 @@ final class FakePassStoreBackend: PassStoreBackend {
     }
 
     func purchase() async -> PassPurchaseResult {
+        if holdsPurchase {
+            await withCheckedContinuation { heldPurchase = $0 }
+        }
         if nextPurchaseResult == .purchased {
             entitled = true
         }
@@ -178,7 +214,30 @@ final class FakePassStoreBackend: PassStoreBackend {
     }
 
     func hasEntitlement() async -> Bool {
-        entitled
+        // 確認を読み始めた時点の値を返す（読み終わるのが遅れても、そのあいだの変化は見ない）
+        let value = entitled
+        if holdsEntitlementChecks {
+            await withCheckedContinuation { heldChecks.append($0) }
+        }
+        return value
+    }
+
+    /// 止めている権利の確認を進める
+    func releaseEntitlementChecks() {
+        let checks = heldChecks
+        heldChecks = []
+        checks.forEach { $0.resume() }
+    }
+
+    /// 止めている権利の確認のうち、最後に読み始めたものだけを進める
+    func releaseLatestEntitlementCheck() {
+        heldChecks.popLast()?.resume()
+    }
+
+    /// 止めている購入を進める
+    func releasePurchase() {
+        heldPurchase?.resume()
+        heldPurchase = nil
     }
 
     func sync() async -> Bool {
