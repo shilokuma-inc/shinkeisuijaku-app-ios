@@ -58,4 +58,26 @@ struct IllustrationTests {
         #expect(abs(rotated.boundingRect.midY - rect.midY) < 0.001)
         #expect(abs(rotated.boundingRect.width - rect.height) < 0.001)
     }
+
+    /// 正の角度は、SVG と同じく画面の上で時計回り（右向きの線を 90 度回すと下向きになる）
+    @Test
+    func positiveRotationIsClockwiseOnScreen() {
+        var line = Path()
+        line.move(to: CGPoint(x: 50, y: 50))
+        line.addLine(to: CGPoint(x: 60, y: 50))
+        let rotated = line.rotated(by: 90, around: CGPoint(x: 50, y: 50)).boundingRect
+        #expect(abs(rotated.minY - 50) < 0.001)
+        #expect(abs(rotated.maxY - 60) < 0.001)
+        #expect(abs(rotated.midX - 50) < 0.001)
+    }
+
+    /// 円弧の向き: スイカの皮は下に膨らむ半円（上の切り口の y = 38 から、下へ半径 44 まで）
+    @Test
+    func suikaArcBulgesDownward() throws {
+        let rind = try #require(IllustrationArt.parts(for: .suika).first).path.boundingRect
+        #expect(abs(rind.minY - 38) < 0.001)
+        #expect(abs(rind.maxY - 82) < 0.001)
+        #expect(abs(rind.minX - 10) < 0.001)
+        #expect(abs(rind.maxX - 98) < 0.001)
+    }
 }
