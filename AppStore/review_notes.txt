@@ -1,21 +1,32 @@
-TODO: アプリの名前 - Notes for App Review
-TODO: 最初の審査で Apple が求める 6 項目（Guideline 2.1 - Information Needed）への回答。英語で書き、TODO: の行をすべて書き換える（上限 4000 字）。書き方の例は shilokuma-inc/numer0n-lens-ios の AppStore/review_notes.txt
+Shinkeisuijaku - Notes for App Review
+A memory (concentration) card game for young children in the Kids category (age band: 5 and under). The UI is Japanese only; labels are quoted as shown, with English in [square brackets].
 
 1. SCREEN RECORDING
-A screen recording from a physical iPhone running the latest iOS is attached to the App Review Information. It starts by launching the app and shows the typical flow: TODO: 映す画面を順に書く（例: tutorial, creating an item, editing it, settings）.
-TODO: アカウントの登録・ログイン・アカウントの削除、ユーザーの投稿（通報とブロック）、課金があれば、動画にも映してここに書く。無ければ次の 1 文にする: The app has no account registration, login, user-generated content, paid content, or In-App Purchases.
+A screen recording from a physical iPhone running the latest iOS is attached to the App Review Information. It starts with the first launch and shows: the first game starting without the home screen, clearing it, the home screen, the stamp book, a locked difficulty, the parental gate, and the purchase and restore of the In-App Purchase.
+The app has no account registration, login, or user-generated content. It has one In-App Purchase (section 3).
 
 2. PURPOSE AND TARGET AUDIENCE
-TODO: 何をするアプリか・誰のためのアプリか・どんな困りごとを解決し、どんな価値があるか。
+An ad-free memory game for children aged 5 and under, to play alone or with a parent or grandparent. Children turn over cards to find pairs in two courses: "どうぶつ" [Animals] (the same picture) and "ひらがな" [Hiragana] (a hiragana letter and a picture, to get familiar with letters and words).
+It does not pressure children: no timer, time limit, move or mistake count, score, or ranking. A wrong pair just turns back over, with no "X" mark or warning sound. The app has no sound or voice.
 
 3. HOW TO ACCESS THE MAIN FEATURES
-TODO: 主な機能までの手順を番号付きで書く。ログインやサンプルファイルが要らなければ、まず No login, account, credentials, or sample files are required. と書く。UI が英語でなければ、ボタンの文言を原文のまま引用し、[角括弧] で英訳を添える。ログインが要るなら app_info.json の review.demoAccountRequired を true にし、デモアカウントは Secrets で渡す（ここには書かない）。
+No login, account, credentials, or sample files are required.
+First launch: until the first game is cleared, the app skips the home screen and starts a 6-pair "どうぶつ" [Animals] game right away. After the first clear, it starts from the home screen. (To reach home without clearing, tap "やめる" [Quit], then "やめる" [Quit] in the alert.)
+1. Find all pairs. "ヒント" [Hint] shows all cards for about a second. The clear dialog "よくできました！" [Well done!] gives a stamp.
+2. Tap "ホームにもどる" [Back to home]. On home, "あそぶ" [Play] starts the last game again and "スタンプちょう" [Stamp book] shows the stamps.
+3. "やさしい" [Easy] (6 pairs) is free in both courses. "ふつう" [Normal] (8 pairs) and "むずかしい" [Hard] (10 pairs) need a one-time purchase.
+In-App Purchase: product ID jp.shilokuma.Shinkeisuijaku.pass (Non-Consumable, "ぜんぶ遊べるパス" [All-access pass]). It unlocks Normal and Hard in both courses and their special stamps.
+To test it, either:
+  a. Home > under "ほかの あそびかた" [Other ways to play], tap "どうぶつ" [Animals] > tap the locked "ふつう" [Normal] > "おうちの方に あけてもらってね" [Ask a grown-up to unlock it] > "おうちの方へ" [For parents] > parental gate > "購入する" [Buy]. After the purchase, that game starts.
+  b. Home > "おうちの方へ" [For parents] at the top right > parental gate > "購入する" [Buy] or "購入を復元" [Restore Purchases].
+Parental gate: the "保護者の方へ" [For parents] dialog asks for the sum of a 2-digit and a 1-digit number shown on screen (e.g. "12 ＋ 7 ＝ ？", answer 19), entered with the number pad and "決定" [OK]. A wrong answer changes the question. The price, purchase, restore, and external links appear only after the gate. Children's screens never show the price.
 
 4. EXTERNAL SERVICES
-TODO: 主な機能のために使う外部サービス（データ提供元・認証・決済・解析・広告・AI など）を挙げる。無ければ None. The app works entirely offline. のように書く。
+None, except Apple's StoreKit for the price, purchase, and restore. The app makes no network requests of its own and works offline. No third-party SDKs, advertising, analytics, crash reporting, or tracking. Play data (stamps, cached purchase state, last course and difficulty, first-clear flag) is stored only on the device.
+The only external links are the privacy policy and the contact form on the "おうちの方へ" [For parents] screen, reachable only after the parental gate. They open in Safari; there is no in-app browser.
 
 5. REGIONAL DIFFERENCES
-TODO: 地域による機能や内容の違い。無ければ None. The app's features and content are the same in all regions. と書く。
+None. The features and content are the same in all regions. The app is distributed in Japan only, as it is Japanese only.
 
 6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
-TODO: 規制のある業種（金融・医療・ギャンブルなど）か、第三者の保護された素材（商標・著作物・ライセンスを受けた素材）を含むかと、使ってよいことを示す資料。どちらも無ければそう書く。同梱したフォントなどのライセンスはここに挙げる。
+Not a regulated industry, and no third-party protected material. All illustrations (animals, fruits, a star, and the stamps) are original artwork made for this app and drawn in code. Text uses the Hiragino fonts built into iOS; no fonts are bundled.
