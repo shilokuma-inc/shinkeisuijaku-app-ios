@@ -26,6 +26,9 @@ final class AppServices {
 
     /// 起動のしかたに合わせた保存とストアを作る（Unit テストのホスト・UI テスト・撮影モードではメモリ上の保存と擬似のストア）
     static func makeForLaunch() -> AppServices {
+        if let launch = UITestingLaunch.current {
+            return launch.makeServices()
+        }
         let store = AppDataStoreFactory.make()
         let passStore = PassStore(backend: PassStoreFactory.makeBackend(), dataStore: store)
         return AppServices(store: store, passStore: passStore, haptics: SystemHaptics())

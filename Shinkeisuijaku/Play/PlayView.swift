@@ -179,7 +179,7 @@ private struct CardGrid: View {
         .buttonStyle(.plain)
         // disabled にすると全部見せているあいだにカードが薄くなるので、押せないようにするだけにする
         .allowsHitTesting(!session.isInputLocked && !card.isFaceUp)
-        .accessibilityIdentifier("play.card.\(index)")
+        .accessibilityIdentifier(UITestingLaunch.cardIdentifier(index: index, pairID: card.pairID))
     }
 }
 

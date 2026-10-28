@@ -99,8 +99,12 @@ struct RootView: View {
 }
 
 extension AppFlow {
-    /// アプリで 1 つの保存とストアで、窓ごとの画面の流れを作る（保存とストアは `AppServices.makeForLaunch()` が起動のしかたに合わせて選ぶ）
+    /// アプリで 1 つの保存とストアで、窓ごとの画面の流れを作る（保存とストアは `AppServices.makeForLaunch()` が起動のしかたに合わせて選ぶ）。
+    /// UI テストでは、乱数の種の固定と待ち時間の短縮にも切り替える（`UITestingLaunch`）
     static func makeForLaunch(services: AppServices) -> AppFlow {
-        AppFlow(store: services.store, passStore: services.passStore, haptics: services.haptics)
+        if let launch = UITestingLaunch.current {
+            return launch.makeFlow(services: services)
+        }
+        return AppFlow(store: services.store, passStore: services.passStore, haptics: services.haptics)
     }
 }
