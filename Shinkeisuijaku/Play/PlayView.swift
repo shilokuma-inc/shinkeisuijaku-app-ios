@@ -161,7 +161,6 @@ private struct CardGrid: View {
                             cardButton(cards[index], index: index)
                                 .frame(width: layout.cardSize.width, height: layout.cardSize.height)
                         }
-                        Spacer(minLength: 0)
                     }
                 }
             }
