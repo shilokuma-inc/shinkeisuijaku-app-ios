@@ -39,6 +39,8 @@ enum ScreenshotDemo {
         case courseSelect
         /// スタンプちょう（通常を何個か・パス専用を 1 つ集めた状態）
         case stampBook
+        /// おうちの方への画面（保護者の確認のあと。購入前）。App Store には出さない
+        case parents
     }
 
     /// 撮影モードで起動するときの起動引数
