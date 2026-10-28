@@ -41,6 +41,8 @@ struct PassStoreTests {
         await store.start()
         #expect(!store.hasPass, "権利の正は StoreKit")
         #expect(!data.data.hasPassCache)
+        // 値段は権利の確認を待たせないよう、待たずに読み始める
+        await waitUntil { store.displayPrice != nil }
         #expect(store.displayPrice == "¥100")
         store.stop()
     }
@@ -226,17 +228,82 @@ struct PassStoreTests {
         #expect(store.hasPass)
     }
 
-    /// 起動時に値段を読めなかったら、権利を確かめ直すときに読み直す
+    /// 起動時に値段を読めなかったら、権利を確かめ直すとき（と画面から頼まれたとき）に読み直す
     @Test
     func priceIsReloadedWhenMissing() async {
         let fixture = makeStore()
         let store = fixture.store
-        fixture.backend.displayPrice = nil
+        let backend = fixture.backend
+        backend.displayPrice = nil
         await store.start()
+        await waitUntil { backend.finishedPriceLoadCount == 1 }
         #expect(store.displayPrice == nil)
-        fixture.backend.displayPrice = "¥100"
+        backend.displayPrice = "¥100"
+        backend.holdsPriceLoads = true
         await store.refreshEntitlement()
+        await waitUntil { backend.heldPriceLoadCount == 1 }
+        // 読み直している途中に重ねて頼んでも、読み込みは 1 つだけ
+        store.reloadPriceIfMissing()
+        for _ in 0..<100 {
+            await Task.yield()
+        }
+        #expect(backend.heldPriceLoadCount == 1)
+        backend.releasePriceLoads()
+        await waitUntil { store.displayPrice != nil }
         #expect(store.displayPrice == "¥100")
         store.stop()
+    }
+
+    /// 値段の読み込み（通信）が終わらなくても、復元は権利を確かめたら終わり、ボタンを押せるように戻す（PR #32 の申し送り）
+    @Test
+    func restoreDoesNotWaitForPrice() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        backend.displayPrice = nil
+        backend.holdsPriceLoads = true
+        backend.restorableEntitlement = true
+        await store.start()
+        #expect(await store.restore() == .restored)
+        #expect(!store.isBusy)
+        #expect(store.hasPass)
+        #expect(store.displayPrice == nil, "値段はまだ読み込み中")
+        backend.releasePriceLoads()
+        store.stop()
+    }
+
+    /// 取引の変化で権利を確かめるときも、値段の読み込みを待たない
+    @Test
+    func transactionUpdateDoesNotWaitForPrice() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        backend.displayPrice = nil
+        backend.holdsPriceLoads = true
+        await store.start()
+        backend.entitled = true
+        backend.sendTransactionUpdate()
+        await waitUntil { store.hasPass }
+        #expect(store.hasPass)
+        #expect(backend.heldPriceLoadCount == 1, "読み込みは起動時の 1 つだけで、取引の変化では増やさない")
+        backend.releasePriceLoads()
+        store.stop()
+    }
+
+    /// 止めた後に値段を読み終わっても、値段は変えない
+    @Test
+    func stopCancelsPriceReload() async {
+        let fixture = makeStore()
+        let store = fixture.store
+        let backend = fixture.backend
+        backend.holdsPriceLoads = true
+        await store.start()
+        await waitUntil { backend.heldPriceLoadCount == 1 }
+        store.stop()
+        backend.releasePriceLoads()
+        for _ in 0..<100 {
+            await Task.yield()
+        }
+        #expect(store.displayPrice == nil)
     }
 }
