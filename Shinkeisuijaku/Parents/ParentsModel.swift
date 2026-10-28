@@ -138,9 +138,13 @@ struct ParentsPassStatus: Equatable, Sendable {
         return priceLoadFailed ? String(localized: "読み込めませんでした") : String(localized: "読み込み中…")
     }
 
-    /// 値段を読めなかったときに、値段の下に出す説明（読めたとき・読み込み中は nil）
+    /// 値段を読めなかったときに、値段の下に出す説明（読めたとき・読み込み中は nil）。
+    /// 値段は、この画面を開いたときと、アプリが前面に戻ったとき（`PassStore.refreshEntitlement()`）に読み直すので、両方を伝える
     var priceFailureNote: String? {
-        displayPrice == nil && priceLoadFailed ? String(localized: "通信できる状態で、この画面を開き直すと読み込みます。") : nil
+        guard displayPrice == nil, priceLoadFailed else {
+            return nil
+        }
+        return String(localized: "通信できる状態で、この画面を開き直すか、ほかのアプリから戻ってくると、もう一度読み込みます。")
     }
 }
 
