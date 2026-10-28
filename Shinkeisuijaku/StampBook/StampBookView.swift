@@ -66,6 +66,8 @@ struct StampBookView: View {
                 .foregroundStyle(Palette.accent)
         }
         .lineLimit(1)
+        // 文字を最大にしても数字が「…」で切れないよう、入らないときは縮める（「あと◯ペア」と同じ）
+        .minimumScaleFactor(Metrics.textMinimumScale)
         .padding(.vertical, Metrics.pairCountVerticalPadding)
         .padding(.horizontal, Metrics.pairCountHorizontalPadding)
         .background(Palette.surface, in: RoundedRectangle(cornerRadius: Metrics.pairCountCornerRadius))
