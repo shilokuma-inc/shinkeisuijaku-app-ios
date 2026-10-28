@@ -28,6 +28,8 @@ struct Shinkeisuijaku: App {
             IllustrationCatalogView()
         case .cards:
             CardCatalogView()
+        case .stamps:
+            StampCatalogView()
         }
     }
 }

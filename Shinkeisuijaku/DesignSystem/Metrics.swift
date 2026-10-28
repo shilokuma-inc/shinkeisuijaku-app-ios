@@ -81,8 +81,10 @@ enum Metrics {
     static let stampBookMinDiameter: CGFloat = 72
     /// スタンプちょうのスタンプの直径の上限
     static let stampBookMaxDiameter: CGFloat = 80
-    /// スタンプちょうのスタンプの影
-    static let stampBookShadowRadius: CGFloat = 3
+    /// スタンプちょうのスタンプの影（引き継ぎブックの「影 3」。見本の見た目から、ぼかさずに下へ 3 ずらす影と読んだ）
+    static let stampShadowOffsetY: CGFloat = 3
+    /// スタンプの影のぼかし（ぼかさない）
+    static let stampShadowRadius: CGFloat = 0
     /// クリア画面のスタンプの直径
     static let clearStampDiameter: CGFloat = 124
     /// クリア画面のスタンプのかたむき（度）
@@ -91,6 +93,16 @@ enum Metrics {
     static let clearStampBorderWidth: CGFloat = 3
     /// 銀と金のスタンプのふちの太さ
     static let stampRimWidth: CGFloat = 5
+    /// まだのスタンプとパス専用の鍵の点線の太さ（引き継ぎブックに無いので、見本の見た目から決めた）
+    static let stampDashedLineWidth: CGFloat = 2.5
+    /// 点線の線の長さと間（まだのスタンプ・パス専用の鍵・クリア画面のふち）
+    static let stampDash: [CGFloat] = [7, 5]
+    /// クリア画面のスタンプの、点線の青いふちとスタンプのすき間
+    static let clearStampRingGap: CGFloat = 6
+    /// スタンプの中の絵の大きさ（スタンプの直径に対する割合）
+    static let stampPictureRatio: CGFloat = 0.66
+    /// パス専用の鍵の大きさ（スタンプの直径に対する割合）
+    static let stampLockRatio: CGFloat = 0.42
 
     // 絵
     /// 絵の元の枠の大きさ（SVG の 1 つの図の幅と高さ）
