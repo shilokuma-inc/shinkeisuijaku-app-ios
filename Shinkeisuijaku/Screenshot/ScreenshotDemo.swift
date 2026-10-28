@@ -37,6 +37,8 @@ enum ScreenshotDemo {
         case parentalGate
         /// コース選択のダイアログ（ひらがな。パスの購入前で鍵が付いた状態）
         case courseSelect
+        /// スタンプちょう（通常を何個か・パス専用を 1 つ集めた状態）
+        case stampBook
     }
 
     /// 撮影モードで起動するときの起動引数

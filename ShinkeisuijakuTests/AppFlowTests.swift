@@ -231,4 +231,52 @@ struct AppFlowTests {
         #expect(flow.session == nil)
         #expect(flow.path.isEmpty)
     }
+
+    // MARK: - スタンプちょう
+
+    /// ホームのスタンプちょうのボタンで、スタンプちょうを積み、「ホームにもどる」でホームに戻る
+    @Test
+    func openStampBookFromHome() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        flow.openStampBook()
+        #expect(flow.path == [.stampBook])
+        flow.goHome()
+        #expect(flow.path.isEmpty)
+    }
+
+    /// クリアの「スタンプちょう」は、プレイを残さずにスタンプちょうにする（戻るとホームへ）
+    @Test
+    func clearStampBookActionReplacesGame() {
+        let flow = makeFlow().flow
+        #expect(flow.path == [.game])
+        flow.recordClear()
+        flow.handle(.stampBook)
+        #expect(flow.path == [.stampBook])
+        flow.goHome()
+        #expect(flow.path.isEmpty)
+    }
+
+    /// スタンプちょうは保存のスタンプを出し、クリアでもらったスタンプも数に入る
+    @Test
+    func stampBookShowsSavedStamps() throws {
+        let data = AppData(ownedStampIDs: [Stamp.regular(.dog).id])
+        let flow = makeFlow(data: data).flow
+        #expect(flow.stampBookLayout.collectedCount == 1)
+        let outcome = try #require(flow.recordClear())
+        let awarded = try #require(outcome.awardedStamp)
+        flow.handle(.stampBook)
+        let layout = flow.stampBookLayout
+        #expect(layout.collectedCount == 2)
+        #expect(layout.regular.contains { $0.slot == .owned(awarded) })
+    }
+
+    /// パスの権利が無ければパス専用の枠は鍵、あれば鍵を消す
+    @Test
+    func stampBookLockFollowsPass() {
+        let locked = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        #expect(locked.stampBookLayout.pass.allSatisfy { $0.slot == .locked })
+        // パスの権利は StoreKit で確かめるまで端末内のキャッシュなので、キャッシュも持たせる
+        let unlocked = makeFlow(data: AppData(hasPassCache: true, hasClearedOnce: true), entitled: true).flow
+        #expect(unlocked.stampBookLayout.pass.allSatisfy { $0.slot == .empty })
+    }
 }

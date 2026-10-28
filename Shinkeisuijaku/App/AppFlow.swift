@@ -16,6 +16,8 @@ final class AppFlow {
     enum Destination: Hashable {
         /// プレイ（クリアのダイアログを含む）
         case game
+        /// スタンプちょう
+        case stampBook
     }
 
     /// ホームの上に積んだ画面（`NavigationStack` の path）
@@ -141,6 +143,16 @@ final class AppFlow {
         return result
     }
 
+    /// スタンプちょうを開く（ホームのボタン・クリアの「スタンプちょう」）。クリアから開いたときもプレイを残さないので、戻るとホームへ
+    func openStampBook() {
+        path = [.stampBook]
+    }
+
+    /// スタンプちょうの並べ方（保存の持っているスタンプとパスの権利から。開くたびに保存を読み直す）
+    var stampBookLayout: StampBookLayout {
+        StampBookLayout(owned: StampCollection(ids: store.load().ownedStampIDs), hasPass: hasPass)
+    }
+
     /// クリアのダイアログで押したもの
     func handle(_ action: ClearAction) {
         guard let session else {
@@ -157,8 +169,10 @@ final class AppFlow {
             startGame(GameChoice(course: session.course, difficulty: difficulty))
         case .home:
             goHome()
-        case .stampBook, .parents:
-            // スタンプちょう（タスク 15）・おうちの方へ（タスク 18・19）の画面ができたらつなぐ
+        case .stampBook:
+            openStampBook()
+        case .parents:
+            // おうちの方へ（タスク 18・19）の画面ができたらつなぐ
             break
         }
     }

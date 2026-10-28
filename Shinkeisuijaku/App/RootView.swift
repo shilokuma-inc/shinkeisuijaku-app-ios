@@ -2,7 +2,7 @@
 //  RootView.swift
 //  Shinkeisuijaku
 //
-//  アプリの一番外の画面。ホームを根にした `NavigationStack` に、プレイ（クリアのダイアログを含む）を積む。
+//  アプリの一番外の画面。ホームを根にした `NavigationStack` に、プレイ（クリアのダイアログを含む）とスタンプちょうを積む。
 //  初回クリア前は、起動したときからプレイを積んでいるので、ホームを通らずにゲームが始まる。
 //
 
@@ -23,8 +23,8 @@ struct RootView: View {
                 resumeChoice: flow.resumeChoice,
                 onPlay: flow.play,
                 onChooseCourse: flow.chooseCourse,
-                // スタンプちょう（タスク 15）・おうちの方へ（タスク 18）ができたらつなぐ
-                onOpenStampBook: {},
+                onOpenStampBook: flow.openStampBook,
+                // おうちの方へ（タスク 18）ができたらつなぐ
                 onOpenParents: {}
             )
             .toolbar(.hidden, for: .navigationBar)
@@ -33,6 +33,8 @@ struct RootView: View {
                 switch destination {
                 case .game:
                     gameScreen
+                case .stampBook:
+                    stampBookScreen
                 }
             }
         }
@@ -63,6 +65,13 @@ struct RootView: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationBarBackButtonHidden()
         }
+    }
+
+    /// スタンプちょう。戻るのは「ホームにもどる」だけ（仕様書の遷移先はホーム。クリアから開いたときもホームへ）
+    private var stampBookScreen: some View {
+        StampBookView(layout: flow.stampBookLayout, onHome: flow.goHome)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarBackButtonHidden()
     }
 }
 

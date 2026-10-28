@@ -47,6 +47,8 @@ enum Metrics {
     static let homeArchRise: CGFloat = 18
     /// ホームのまとまり（アーチとタイトル・「あそぶ」・ほかの あそびかた）どうしのすき間
     static let homeSectionSpacing: CGFloat = 20
+    /// 1 行の表示（集めた数の札など）が入らないとき（文字を大きくしたとき）に縮める下限の割合
+    static let textMinimumScale: CGFloat = 0.5
     /// ホームのタイトルが 1 行に入らないとき（文字を大きくしたとき）に縮める下限の割合
     static let homeTitleMinimumScale: CGFloat = 0.5
     /// 丸いボタン（おうちの方へ）の内側の左右の余白
@@ -125,6 +127,12 @@ enum Metrics {
     static let stampPictureRatio: CGFloat = 0.66
     /// パス専用の鍵の大きさ（スタンプの直径に対する割合）
     static let stampLockRatio: CGFloat = 0.42
+
+    // スタンプちょう（引き継ぎブックに値が無いので、iPhone SE の幅で直径が 72 を下回らず、高さに収まる大きさにした）
+    /// スタンプどうしのすき間（縦横とも。カードのすき間と同じ）
+    static let stampBookSpacing: CGFloat = 8
+    /// スタンプちょうのまとまり（見出し・集めた数・通常の枠・パス専用の枠）どうしのすき間
+    static let stampBookSectionSpacing: CGFloat = 16
 
     // 絵
     /// 絵の元の枠の大きさ（SVG の 1 つの図の幅と高さ）
