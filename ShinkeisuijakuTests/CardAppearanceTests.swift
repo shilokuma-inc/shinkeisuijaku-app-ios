@@ -24,6 +24,23 @@ struct CardAppearanceTests {
         #expect(CardAppearance(face: .letter("ね"), isFaceUp: false, showsMatched: true).background == .back)
     }
 
+    /// 裏のカードは、揃ったときの見た目の印（`showsMatched`）が残っていても、言葉を出さない（裏から中身が分からない）
+    @Test
+    func faceDownCardHidesWordEvenWhenShowsMatched() {
+        let appearance = CardAppearance(face: .picture(.cat, word: "ねこ"), isFaceUp: false, showsMatched: true)
+        #expect(appearance.word == nil)
+        #expect(appearance.backgroundColor == Palette.cardBack)
+    }
+
+    /// めくりの途中は、半分（90 度）を過ぎるまで裏を描き、過ぎたら表を描く
+    @Test
+    func flipShowsFrontFromHalfway() {
+        #expect(!CardAppearance.showsFront(atAngle: 0))
+        #expect(!CardAppearance.showsFront(atAngle: 89.9))
+        #expect(CardAppearance.showsFront(atAngle: 90))
+        #expect(CardAppearance.showsFront(atAngle: 180))
+    }
+
     /// 表は、文字のカードが温かい色の地、絵のカードが水色の地
     @Test
     func faceUpCardsUseTheirOwnBackground() {

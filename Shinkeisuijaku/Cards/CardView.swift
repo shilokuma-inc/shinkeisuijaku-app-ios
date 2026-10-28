@@ -54,6 +54,12 @@ struct CardAppearance: Equatable {
         }
         return word
     }
+
+    /// めくっている途中の角度で、表を描くか（0 で裏・180 で表。半分の 90 度からは表）。
+    /// 裏を描いているあいだは表の中身を描かないので、裏のカードの中身は見た目にも読み上げにも出ない
+    static func showsFront(atAngle angle: Double) -> Bool {
+        angle >= Motion.flipAngleDegrees / 2
+    }
 }
 
 /// カード 1 枚。与えられた大きさいっぱいに描き、めくり・揃ったときの動きを付ける
@@ -143,12 +149,12 @@ private struct CardFlip<Back: View, Front: View>: ViewModifier, Animatable {
 
     func body(content: Content) -> some View {
         ZStack {
-            if angle < Motion.flipAngleDegrees / 2 {
-                back()
-            } else {
+            if CardAppearance.showsFront(atAngle: angle) {
                 // 表は裏返しに見えないよう、さらに半回転しておく
                 front()
                     .rotation3DEffect(.degrees(Motion.flipAngleDegrees), axis: (x: 0, y: 1, z: 0))
+            } else {
+                back()
             }
         }
         .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0))
