@@ -11,9 +11,18 @@
     "  ログインしないと使えない機能があるなら demoAccountRequired を true にし、メモに試し方を書く。実機の画面収録は API で反映しないので、App Store Connect の添付ファイルに付ける。",
     "  連絡先（氏名・電話番号・メールアドレス）とデモアカウントは個人情報・秘密なので、ここには書かず Secrets（APP_REVIEW_CONTACT_* / APP_REVIEW_DEMO_ACCOUNT_*）で渡す。",
     "pricing / availability は、App Store Connect で未設定のとき（最初のリリースの前）だけ書き込む。設定済みなら触らないので、価格や配信先を変えるときは App Store Connect の画面で行う。",
-    "  pricing.price は FREE だけ書ける（有料のアプリは App Store Connect で設定し、pricing を消す）。availability.territories は ALL（すべての国と地域）か、[\"JPN\"] のような 3 文字のコードの配列。"
+    "  pricing.price は FREE だけ書ける（有料のアプリは App Store Connect で設定し、pricing を消す）。availability.territories は ALL（すべての国と地域）か、[\"JPN\"] のような 3 文字のコードの配列。",
+    "このアプリ: 子ども向けカテゴリ（kidsAgeBand FIVE_AND_UNDER。仕様書の「5 歳以下を中心に想定」）。プライマリは GAMES（サブカテゴリは家族向けとカード。神経衰弱はカードのゲーム）、セカンダリは EDUCATION（ひらがなと絵を覚える）。",
+    "  年齢制限: 広告・ユーザーが作るコンテンツ・チャット・SNS・ギャンブル・ルートボックスはなし。外部のサイトはプライバシーポリシーとお問い合わせの 2 つだけで、保護者の確認のあとに Safari で開く（アプリの中のブラウザは無い）ので unrestrictedWebAccess は false。",
+    "  parentalControls は保護者が子どもの使い方を制限する機能があるかの質問で、購入の前の保護者の確認（親ゲート）はそれにあたらないので false。アプリ内課金（買い切りのパス）は年齢制限の質問に無く、App Store Connect のアプリ内課金に登録する。",
+    "  本体は無料（パスはアプリ内課金）。日本語だけのアプリなので配信は日本だけにし、新しい国と地域にも自動で配信しない。"
   ],
-  "primaryCategory": "TODO: UTILITIES",
+  "primaryCategory": "GAMES",
+  "primarySubcategories": [
+    "GAMES_FAMILY",
+    "GAMES_CARD"
+  ],
+  "secondaryCategory": "EDUCATION",
   "contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT",
   "ageRating": {
     "alcoholTobaccoOrDrugUseOrReferences": "NONE",
@@ -38,7 +47,8 @@
     "parentalControls": false,
     "socialMedia": false,
     "unrestrictedWebAccess": false,
-    "userGeneratedContent": false
+    "userGeneratedContent": false,
+    "kidsAgeBand": "FIVE_AND_UNDER"
   },
   "review": {
     "demoAccountRequired": false,
@@ -49,7 +59,9 @@
     "baseTerritory": "JPN"
   },
   "availability": {
-    "territories": "ALL",
-    "availableInNewTerritories": true
+    "territories": [
+      "JPN"
+    ],
+    "availableInNewTerritories": false
   }
 }
