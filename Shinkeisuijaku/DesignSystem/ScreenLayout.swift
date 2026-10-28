@@ -15,14 +15,15 @@ extension View {
     func topSafeAreaBackground<Background: View>(@ViewBuilder _ background: () -> Background) -> some View {
         let backdrop = background()
         return overlay {
+            // 読み取りの枠ごと安全領域の外まで広げる（枠が安全領域の内側にあると、上の安全領域の高さが 0 と読めてしまう）
             GeometryReader { proxy in
                 backdrop
                     .mask(alignment: .top) {
                         Rectangle()
                             .frame(height: proxy.safeAreaInsets.top)
                     }
-                    .ignoresSafeArea()
             }
+            .ignoresSafeArea()
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }
