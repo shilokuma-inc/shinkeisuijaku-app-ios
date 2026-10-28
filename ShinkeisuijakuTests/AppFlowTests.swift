@@ -279,4 +279,68 @@ struct AppFlowTests {
         let unlocked = makeFlow(data: AppData(hasPassCache: true, hasClearedOnce: true), entitled: true).flow
         #expect(unlocked.stampBookLayout.pass.allSatisfy { $0.slot == .empty })
     }
+
+    // MARK: - おうちの方へ
+
+    /// 「おうちの方へ」は、先に保護者の確認を出す（まだおうちの方への画面は積まない）
+    @Test
+    func openParentsShowsParentalGateFirst() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        #expect(!flow.isShowingParentalGate)
+        flow.openParents()
+        #expect(flow.isShowingParentalGate)
+        #expect(flow.path.isEmpty)
+    }
+
+    /// 保護者の確認を通ったら、ダイアログを閉じておうちの方への画面を積み、「ホームにもどる」でホームに戻る
+    @Test
+    func passingParentalGatePushesParents() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        flow.openParents()
+        flow.parentalGatePassed()
+        #expect(!flow.isShowingParentalGate)
+        #expect(flow.path == [.parents])
+        flow.goHome()
+        #expect(flow.path.isEmpty)
+    }
+
+    /// 保護者の確認をやめたら、ダイアログを閉じてホームのまま（何も積まない）
+    @Test
+    func cancellingParentalGateStaysHome() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        flow.openParents()
+        flow.cancelParentalGate()
+        #expect(!flow.isShowingParentalGate)
+        #expect(flow.path.isEmpty)
+        #expect(flow.session == nil)
+    }
+
+    /// 保護者の確認を出していないときに「通った」が届いても、おうちの方への画面は積まない（確認を飛ばして開かない）
+    @Test
+    func parentsNeedParentalGate() {
+        let flow = makeFlow(data: AppData(hasClearedOnce: true)).flow
+        flow.parentalGatePassed()
+        #expect(flow.path.isEmpty)
+        flow.openParents()
+        flow.cancelParentalGate()
+        flow.parentalGatePassed()
+        #expect(flow.path.isEmpty)
+    }
+
+    /// おうちの方への画面で買うと、ホームの「あそぶ」も前回の鍵の付いた難易度で始められるようになる
+    @Test
+    func purchaseFromParentsUnlocksResume() async {
+        let data = AppData(lastCourse: .hiragana, lastDifficulty: .hard, hasClearedOnce: true)
+        let flow = makeFlow(data: data).flow
+        #expect(flow.resumeChoice == GameChoice(course: .hiragana, difficulty: .easy))
+        flow.openParents()
+        flow.parentalGatePassed()
+        let parents = ParentsModel(passStore: flow.passStore)
+        parents.request(.purchase)
+        await parents.runPendingAction()
+        #expect(parents.message == .purchased)
+        #expect(flow.hasPass)
+        #expect(flow.resumeChoice == GameChoice(course: .hiragana, difficulty: .hard))
+        flow.passStore.stop()
+    }
 }
