@@ -14,10 +14,19 @@ protocol Haptics {
     func matched()
 }
 
-/// 端末の振動（`UIImpactFeedbackGenerator`。長さを選べないので、軽い衝撃で 25 ミリ秒に近づける）
-struct SystemHaptics: Haptics {
+/// 端末の振動（`UIImpactFeedbackGenerator`。長さを選べないので、軽い衝撃で 25 ミリ秒に近づける）。
+/// 鳴らすのが遅れないよう、generator を持っておき、鳴らすたびに次の分を `prepare()` する
+@MainActor
+final class SystemHaptics: Haptics {
+    private let matchGenerator = UIImpactFeedbackGenerator(style: .light)
+
+    init() {
+        matchGenerator.prepare()
+    }
+
     func matched() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        matchGenerator.impactOccurred()
+        matchGenerator.prepare()
     }
 }
 
