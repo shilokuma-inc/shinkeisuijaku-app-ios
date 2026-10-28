@@ -32,6 +32,10 @@ struct StampBookView: View {
             homeButton
         }
         .background(Palette.background.ignoresSafeArea())
+        // スクロールしたときに、中身がステータスバーに重ならないようにする（ホームと同じ）
+        .topSafeAreaBackground {
+            Palette.background
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("stampBook")
     }

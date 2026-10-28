@@ -33,13 +33,22 @@ struct HomeView: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .background {
-            ZStack {
-                Palette.background
-                DotPattern(spacing: Metrics.homeDotSpacing, diameter: Metrics.homeDotDiameter, color: Palette.homeBackgroundDot)
-            }
-            .ignoresSafeArea()
+            homeBackground
+                .ignoresSafeArea()
+        }
+        // 文字を大きくしてスクロールしたときに、中身がステータスバーに重ならないようにする（スタンプちょう・おうちの方へと同じ）
+        .topSafeAreaBackground {
+            homeBackground
         }
         .accessibilityIdentifier("home")
+    }
+
+    /// 背景（青い水玉）
+    private var homeBackground: some View {
+        ZStack {
+            Palette.background
+            DotPattern(spacing: Metrics.homeDotSpacing, diameter: Metrics.homeDotDiameter, color: Palette.homeBackgroundDot)
+        }
     }
 
     /// ホームの中身（上から順に並べる）
