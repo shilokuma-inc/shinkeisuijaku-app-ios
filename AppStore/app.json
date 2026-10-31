@@ -12,5 +12,5 @@
   "configuration": "Release",
   "simulatorPrefix": "Shinkeisuijaku",
   "screenshotDemoSource": "Shinkeisuijaku/Screenshot/ScreenshotDemo.swift",
-  "appIcon": "Shinkeisuijaku/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+  "appIcon": "Shinkeisuijaku/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
 }
